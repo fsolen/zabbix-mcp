@@ -1,5 +1,9 @@
 fastapi
 uvicorn
-requests
+httpx[http2]
 PyYAML
 ratelimit
+redis
+tenacity
+prometheus-client
+structlog

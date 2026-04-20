@@ -1,0 +1,44 @@
+# PodDisruptionBudget - Node drain/upgrade sırasında availability korur
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: zabbix-mcp-api-pdb
+  namespace: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: zabbix-mcp
+    app.kubernetes.io/component: api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zabbix-mcp
+      app.kubernetes.io/component: api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: zabbix-mcp-worker-pdb
+  namespace: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: zabbix-mcp
+    app.kubernetes.io/component: worker
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zabbix-mcp
+      app.kubernetes.io/component: worker
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: redis
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+      app.kubernetes.io/component: master
