@@ -1,0 +1,10 @@
+apiVersion: project.openshift.io/v1
+kind: Project
+metadata:
+  name: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: zabbix-mcp
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    openshift.io/display-name: "Zabbix MCP"
+    openshift.io/description: "Zabbix Monitoring Control Plane"

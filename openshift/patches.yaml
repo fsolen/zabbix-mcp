@@ -1,0 +1,68 @@
+# OpenShift patches for Kubernetes base manifests
+# Adjusts security context for OpenShift's restricted SCC
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix-mcp-api
+  namespace: zabbix-mcp
+spec:
+  template:
+    spec:
+      # OpenShift assigns UID/GID from namespace range
+      securityContext:
+        runAsNonRoot: true
+        # Remove specific UID - OpenShift assigns from range
+        # runAsUser: 1001
+      containers:
+        - name: api
+          image: image-registry.openshift-image-registry.svc:5000/zabbix-mcp/zabbix-mcp:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            # OpenShift restricted SCC requirements
+            seccompProfile:
+              type: RuntimeDefault
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix-mcp-worker
+  namespace: zabbix-mcp
+spec:
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: worker
+          image: image-registry.openshift-image-registry.svc:5000/zabbix-mcp/zabbix-mcp:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-master
+  namespace: zabbix-mcp
+spec:
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: redis
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault

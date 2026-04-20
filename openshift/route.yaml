@@ -1,0 +1,23 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: zabbix-mcp-api
+  namespace: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: zabbix-mcp
+    app.kubernetes.io/component: api
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+    haproxy.router.openshift.io/balance: roundrobin
+spec:
+  host: zabbix-mcp.apps.cluster.example.com  # Update with your cluster domain
+  to:
+    kind: Service
+    name: zabbix-mcp-api
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

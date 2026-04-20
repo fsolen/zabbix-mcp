@@ -1,0 +1,41 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: zabbix-mcp
+  namespace: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: zabbix-mcp
+    app.kubernetes.io/component: build
+spec:
+  source:
+    type: Git
+    git:
+      uri: "https://github.com/your-org/zabbix-mcp.git"
+      ref: "main"
+    # Or use binary source for local builds:
+    # type: Binary
+    # binary: {}
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+      env:
+        - name: PIP_INDEX_URL
+          value: "https://pypi.org/simple"
+  output:
+    to:
+      kind: ImageStreamTag
+      name: "zabbix-mcp:latest"
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+  resources:
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+  runPolicy: Serial
+  successfulBuildsHistoryLimit: 3
+  failedBuildsHistoryLimit: 3

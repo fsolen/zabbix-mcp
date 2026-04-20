@@ -1,0 +1,15 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: zabbix-mcp
+  namespace: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: zabbix-mcp
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+    - name: latest
+      annotations:
+        description: "Latest build"
+        openshift.io/display-name: "Zabbix MCP (latest)"
