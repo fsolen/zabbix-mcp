@@ -1,0 +1,8 @@
+mode:
+  read_only: true
+
+zabbix:
+  url: "https://zabbix.example.com/api_jsonrpc.php"
+
+cache:
+  ttl_sec: 600
