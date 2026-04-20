@@ -1,4 +1,4 @@
-# Zabbix MCP (Monitoring Control Plane)
+# Zabbix MCP
 
 Zabbix cluster için tasarlanmış analiz ve monitoring aracı. 2500+ host ve 500k+ item destekler.
 
