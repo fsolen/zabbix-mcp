@@ -1,0 +1,1 @@
+# Zabbix MCP Application Package

@@ -7,3 +7,4 @@ redis
 tenacity
 prometheus-client
 structlog
+aiohttp

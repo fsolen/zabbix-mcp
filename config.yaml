@@ -3,87 +3,22 @@ mode:
 
 zabbix:
   url: "https://zabbix.example.com/api_jsonrpc.php"
+  timeout: 30
+  max_retries: 3
+
+redis:
+  url: "redis://redis-master:6379/0"
 
 cache:
   ttl_sec: 600
 
-import redis
-import json
-import httpx
-import asyncio
-from tenacity import retry, stop_after_attempt, wait_exponential
-from prometheus_client import Counter, Histogram
-import time
+limits:
+  max_hosts_per_query: 50
+  max_items_per_query: 1000
+  rate_limit_calls: 10
+  rate_limit_period: 1
+  concurrent_groups: 5
 
-api_calls = Counter('zabbix_api_calls_total', 'Total API calls', ['method'])
-api_latency = Histogram('zabbix_api_latency_seconds', 'API latency')
-
-class RedisCache:
-    def __init__(self, url, ttl):
-        self.r = redis.Redis.from_url(url)
-        self.ttl = ttl
-
-    def set(self, key, value):
-        self.r.setex(f"mcp:{key}", self.ttl, json.dumps(value))
-
-    def get(self, key):
-        val = self.r.get(f"mcp:{key}")
-        return json.loads(val) if val else None
-
-    def get_items_paginated(self, hostids, batch_size=1000):
-        items = []
-        offset = 0
-        while True:
-            batch = self.call("item.get", {
-                "hostids": hostids,
-                "output": ["itemid", "state", "status"],
-                "limit": batch_size,
-                "offset": offset
-            })
-            if not batch:
-                break
-            items.extend(batch)
-            offset += batch_size
-        return items
-
-class AsyncZabbixClient:
-    def __init__(self, cfg, semaphore_limit=10):
-        self.url = cfg["url"]
-        self.semaphore = asyncio.Semaphore(semaphore_limit)
-        self.client = httpx.AsyncClient(
-            http2=True,
-            limits=httpx.Limits(max_keepalive_connections=20)
-        )
-
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, max=10))
-    async def call(self, method, params):
-        async with self.semaphore:
-            payload = {...}
-            r = await self.client.post(self.url, json=payload)
-            return r.json()["result"]
-
-class DistributedRateLimiter:
-    def __init__(self, redis_url, calls_per_sec):
-        self.r = redis.Redis.from_url(redis_url)
-        self.rate = calls_per_sec
-        
-    def acquire(self):
-        # Redis INCR + EXPIRE based throttling
-        key = f"rl:{int(time.time())}"
-        count = self.r.incr(key)
-        if count == 1:
-            self.r.expire(key, 2)
-        return count <= self.rate
-
-@app.get("/health")
-async def health():
-    # Redis ve Zabbix bağlantısını kontrol et
-    try:
-        await redis.ping()
-        return {"status": "ok", "redis": "connected"}
-    except:
-        return JSONResponse({"status": "degraded"}, status_code=503)
-
-async def process_groups(client, groups):
-    tasks = [process_group(client, g) for g in groups]
-    return await asyncio.gather(*tasks, return_exceptions=True)
+worker:
+  scan_interval_sec: 30
+  metrics_port: 9090
