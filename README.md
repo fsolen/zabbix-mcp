@@ -20,8 +20,8 @@ Zabbix cluster için tasarlanmış analiz ve monitoring aracı. 2500+ host ve 50
 │   Server    │     │  (2-10 pod) │     │   Cache     │
 └─────────────┘     └─────────────┘     └──────┬──────┘
                                                │
-                    ┌─────────────┐             │
-                    │   API       │◄────────────┘
+                    ┌─────────────┐            │
+                    │   API       │◄───────────┘
                     │  (2-5 pod)  │
                     └──────┬──────┘
                            │
