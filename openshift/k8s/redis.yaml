@@ -54,6 +54,10 @@ spec:
             - /data
             - --appendonly
             - "yes"
+            - --save
+            - ""
+            - --stop-writes-on-bgsave-error
+            - "no"
           ports:
             - containerPort: 6379
               name: redis
