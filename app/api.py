@@ -40,6 +40,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# MCP routes
+from .mcp_routes import router as mcp_router
+app.include_router(mcp_router)
+
 
 @app.get("/")
 async def root():
@@ -52,7 +56,13 @@ async def root():
             "ready": "/ready",
             "metrics": "/metrics",
             "analysis": "/analysis",
-            "status": "/status"
+            "status": "/status",
+            "mcp": {
+                "info": "/mcp/",
+                "tools": "/mcp/tools",
+                "message": "/mcp/message",
+                "sse": "/mcp/sse"
+            }
         }
     }
 

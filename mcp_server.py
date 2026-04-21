@@ -5,13 +5,22 @@ Zabbix MCP Server - Claude Desktop Integration
 Bu dosya Claude Desktop'un MCP protokolü ile Zabbix monitoring
 verilerine erişmesini sağlar.
 
+İki mod destekler:
+1. LOCAL: Doğrudan OpenShift API'sine bağlanır
+2. REMOTE: OpenShift'teki MCP endpoint'ini kullanır
+
 Kurulum:
 1. pip install mcp httpx
 2. Claude Desktop config'e ekle (aşağıya bak)
+
+Environment Variables:
+- MCP_API_URL: Zabbix MCP API URL (default: OpenShift route)
+- MCP_MODE: "local" veya "remote" (default: local)
 """
 
 import asyncio
 import json
+import os
 import httpx
 from typing import Any
 from mcp.server import Server
@@ -23,7 +32,8 @@ from mcp.types import (
 )
 
 # Zabbix MCP API URL - OpenShift route
-API_URL = "https://zabbix-mcp.apps.ocptest.tmll.sahibindenlocal.net"
+API_URL = os.getenv("MCP_API_URL", "https://zabbix-mcp.apps.ocptest.tmll.sahibindenlocal.net")
+MCP_MODE = os.getenv("MCP_MODE", "local")  # local veya remote
 
 server = Server("zabbix-mcp")
 
