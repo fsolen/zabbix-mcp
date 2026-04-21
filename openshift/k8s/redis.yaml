@@ -48,6 +48,12 @@ spec:
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+          command:
+            - redis-server
+            - --dir
+            - /data
+            - --appendonly
+            - "yes"
           ports:
             - containerPort: 6379
               name: redis
