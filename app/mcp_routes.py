@@ -379,11 +379,11 @@ async def handle_message(request: Request):
 
 @router.get("/sse")
 async def sse_endpoint(request: Request):
-    """SSE endpoint for MCP streaming"""
+    """SSE endpoint for MCP streaming - GET for receiving events"""
     
     async def event_generator() -> AsyncGenerator[str, None]:
-        # Send initial connection event
-        yield f"data: {json.dumps({'type': 'connected', 'server': 'zabbix-mcp'})}\n\n"
+        # Send initial connection event with endpoint info
+        yield f"data: {json.dumps({'type': 'endpoint', 'url': '/mcp/sse'})}\n\n"
         
         # Keep connection alive
         while True:
@@ -403,3 +403,75 @@ async def sse_endpoint(request: Request):
             "X-Accel-Buffering": "no"
         }
     )
+
+
+@router.post("/sse")
+async def sse_message(request: Request):
+    """SSE endpoint for MCP streaming - POST for sending messages"""
+    try:
+        body = await request.json()
+        method = body.get("method", "")
+        params = body.get("params", {})
+        msg_id = body.get("id")
+        
+        cache = get_cache()
+        
+        if method == "initialize":
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "serverInfo": {
+                        "name": "zabbix-mcp",
+                        "version": "1.0.0"
+                    },
+                    "capabilities": {
+                        "tools": {}
+                    }
+                }
+            }
+        
+        elif method == "notifications/initialized":
+            return {"jsonrpc": "2.0", "id": msg_id, "result": {}}
+        
+        elif method == "tools/list":
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {"tools": TOOLS}
+            }
+        
+        elif method == "tools/call":
+            tool_name = params.get("name", "")
+            arguments = params.get("arguments", {})
+            
+            result = await execute_tool(tool_name, arguments, cache)
+            
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": result}
+                    ]
+                }
+            }
+        
+        else:
+            return {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {
+                    "code": -32601,
+                    "message": f"Method not found: {method}"
+                }
+            }
+    
+    except Exception as e:
+        logger.error("sse_post_error", error=str(e))
+        return JSONResponse({
+            "jsonrpc": "2.0",
+            "id": None,
+            "error": {"code": -32603, "message": str(e)}
+        }, status_code=500)
