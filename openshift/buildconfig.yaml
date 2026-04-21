@@ -10,7 +10,7 @@ spec:
   source:
     type: Git
     git:
-      uri: "https://github.com/your-org/zabbix-mcp.git"
+      uri: "https://github.com/fsolen/zabbix-mcp.git"
       ref: "main"
     # Or use binary source for local builds:
     # type: Binary

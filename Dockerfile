@@ -1,9 +1,8 @@
-FROM python:3.11-slim AS base
+# Red Hat UBI Python image - accessible from OpenShift
+FROM registry.access.redhat.com/ubi9/python-311:latest AS base
 
-# Security: Create non-root user
-RUN groupadd -r mcp && useradd -r -g mcp mcp
-
-WORKDIR /app
+# UBI image already has non-root user (default uid 1001)
+WORKDIR /opt/app-root/src
 
 # Install dependencies first (better layer caching)
 COPY requirements.txt .
@@ -12,11 +11,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 COPY config.yaml .
-
-# Set ownership
-RUN chown -R mcp:mcp /app
-
-USER mcp
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
