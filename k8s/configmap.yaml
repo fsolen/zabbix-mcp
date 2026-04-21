@@ -13,17 +13,22 @@ data:
 
     zabbix:
       url: "https://zabbix.example.com/api_jsonrpc.php"
+      timeout: 30
+      max_retries: 3
+
+    redis:
+      url: "redis://redis-master:6379/0"
 
     cache:
       ttl_sec: 600
-      redis_url: "redis://redis-master:6379/0"
 
     limits:
       max_hosts_per_query: 50
       max_items_per_query: 1000
       rate_limit_calls: 10
       rate_limit_period: 1
+      concurrent_groups: 5
 
     worker:
       scan_interval_sec: 30
-      concurrent_groups: 5
+      metrics_port: 9090
