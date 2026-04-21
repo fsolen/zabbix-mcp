@@ -84,6 +84,23 @@ class RedisCache:
         # Fallback to memory
         return self.fallback.get(key)
 
+    def get_age(self, key: str) -> Optional[int]:
+        """Get age of cache entry in seconds"""
+        try:
+            if self.r:
+                ttl = self.r.ttl(self._key(key))
+                if ttl > 0:
+                    return self.ttl - ttl  # age = original_ttl - remaining_ttl
+        except redis.RedisError:
+            pass
+        
+        # Fallback check
+        v = self.fallback.store.get(key)
+        if v:
+            _, ts = v
+            return int(time.time() - ts)
+        return None
+
     def delete(self, key: str) -> bool:
         try:
             if self.r:

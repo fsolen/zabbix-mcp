@@ -1,6 +1,7 @@
 import asyncio
 import signal
 import os
+import time
 import structlog
 from aiohttp import web
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
@@ -19,6 +20,8 @@ scan_duration = Histogram('scan_duration_seconds', 'Duration of full scan')
 groups_processed = Counter('groups_processed_total', 'Total groups processed', ['status'])
 hosts_scanned = Gauge('hosts_scanned_total', 'Total hosts in last scan')
 items_scanned = Gauge('items_scanned_total', 'Total items in last scan')
+groups_skipped = Counter('groups_skipped_total', 'Groups skipped due to no changes')
+api_calls_saved = Counter('api_calls_saved_total', 'API calls saved by incremental update')
 
 running = True
 worker_id = os.getenv("WORKER_ID", "worker-0")
@@ -75,38 +78,85 @@ async def process_group(client: ZabbixClient, group: dict, cfg: dict) -> dict:
         return None
 
 
+async def should_rescan_group(client: ZabbixClient, cache: RedisCache, group: dict) -> bool:
+    """Check if group needs rescan based on host count change"""
+    gid = group["groupid"]
+    gname = group["name"]
+    
+    # Get cached data
+    cached = cache.get(f"analysis:{gname}")
+    if not cached:
+        return True  # No cache, need full scan
+    
+    # Quick check: compare host count
+    try:
+        hosts = await client.call("hostgroup.get", {
+            "groupids": gid,
+            "selectHosts": "count"
+        })
+        if hosts:
+            current_count = int(hosts[0].get("hosts", 0))
+            cached_count = cached.get("metrics", {}).get("hosts", 0)
+            
+            if current_count != cached_count:
+                logger.debug("group_changed", group=gname, 
+                           old_count=cached_count, new_count=current_count)
+                return True
+    except Exception as e:
+        logger.warning("host_count_check_failed", group=gname, error=str(e))
+        return True  # Rescan on error
+    
+    # Check cache age
+    cache_age = cache.get_age(f"analysis:{gname}")
+    max_age = 1800  # Force rescan every 30 minutes regardless
+    if cache_age and cache_age > max_age:
+        return True
+    
+    groups_skipped.inc()
+    api_calls_saved.inc(3)  # Saved ~3 API calls per group
+    return False
+
+
 async def run_scan(client: ZabbixClient, cache: RedisCache, cfg: dict):
-    """Run a full scan of all groups"""
+    """Run a smart incremental scan of all groups"""
     with scan_duration.time():
         groups = await client.get_groups()
         logger.info("scan_started", groups=len(groups))
         
-        concurrent_limit = cfg["limits"].get("concurrent_groups", 5)
+        concurrent_limit = cfg["limits"].get("concurrent_groups", 3)
         semaphore = asyncio.Semaphore(concurrent_limit)
         
-        async def limited_process(group):
+        async def smart_process(group):
             async with semaphore:
+                # Check if rescan needed
+                if not await should_rescan_group(client, cache, group):
+                    logger.debug("group_skipped", group=group["name"])
+                    return None
                 return await process_group(client, group, cfg)
         
         # Process groups concurrently
-        tasks = [limited_process(g) for g in groups]
+        tasks = [smart_process(g) for g in groups]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Store results in cache
         total_hosts = 0
         total_items = 0
+        processed = 0
         
         for result in results:
             if result and isinstance(result, dict):
                 cache.set(f"analysis:{result['group']}", result)
                 total_hosts += result["metrics"]["hosts"]
                 total_items += result["metrics"]["items"]
+                processed += 1
         
         hosts_scanned.set(total_hosts)
         items_scanned.set(total_items)
         
         logger.info("scan_completed", 
                     groups=len(groups), 
+                    processed=processed,
+                    skipped=len(groups) - processed,
                     hosts=total_hosts, 
                     items=total_items)
 
