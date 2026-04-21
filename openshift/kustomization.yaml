@@ -3,21 +3,21 @@ kind: Kustomization
 
 # Inherit from k8s base
 resources:
-  - ../k8s/configmap.yaml
-  - ../k8s/secret.yaml
-  - ../k8s/redis.yaml
-  - ../k8s/api.yaml
-  - ../k8s/worker.yaml
-  - ../k8s/pdb.yaml
+  - k8s/configmap.yaml
+  - k8s/secret.yaml
+  - k8s/redis.yaml
+  - k8s/api.yaml
+  - k8s/worker.yaml
+  - k8s/pdb.yaml
   # OpenShift specific
   - project.yaml
   - imagestream.yaml
   - buildconfig.yaml
   - route.yaml
 
-namespace: zabbix-mcp
 
-commonLabels:
+namespace: zabbix-mcp
+labels:
   app.kubernetes.io/part-of: zabbix-mcp
   app.kubernetes.io/version: "1.0.0"
   app.openshift.io/runtime: python
@@ -31,12 +31,11 @@ images:
     newName: registry.redhat.io/rhel8/redis-6
     newTag: latest
 
-# Apply OpenShift-specific patches
-patchesStrategicMerge:
-  - patches.yaml
 
-# Remove specific runAsUser for OpenShift (it assigns from namespace range)
 patches:
+  - path: patches.yaml
+
+  # Remove specific runAsUser/fsGroup for OpenShift (it assigns from namespace range)
   - target:
       kind: Deployment
       name: zabbix-mcp-api
