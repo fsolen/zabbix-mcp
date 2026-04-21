@@ -1,0 +1,66 @@
+# KEDA - Event-driven autoscaling for workers
+# Redis stream uzunluğuna göre worker scale eder
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: zabbix-mcp-worker-scaler
+  namespace: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: zabbix-mcp
+    app.kubernetes.io/component: worker
+spec:
+  scaleTargetRef:
+    name: zabbix-mcp-worker
+  pollingInterval: 15
+  cooldownPeriod: 300
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  fallback:
+    failureThreshold: 3
+    replicas: 3
+  triggers:
+    # Redis Stream length trigger
+    - type: redis-streams
+      metadata:
+        address: redis-master.zabbix-mcp.svc.cluster.local:6379
+        stream: mcp-tasks
+        consumerGroup: mcp-workers
+        lagCount: "5"
+        activationLagCount: "2"
+    # CPU-based scaling as backup
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "70"
+  advanced:
+    restoreToOriginalReplicaCount: true
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+            - type: Percent
+              value: 25
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+            - type: Pods
+              value: 2
+              periodSeconds: 15
+          selectPolicy: Max
+---
+# Trigger Authentication for Redis (if password required)
+# apiVersion: keda.sh/v1alpha1
+# kind: TriggerAuthentication
+# metadata:
+#   name: redis-auth
+#   namespace: zabbix-mcp
+# spec:
+#   secretTargetRef:
+#     - parameter: password
+#       name: redis-secret
+#       key: redis-password

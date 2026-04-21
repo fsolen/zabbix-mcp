@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zabbix-mcp-config
+  namespace: zabbix-mcp
+  labels:
+    app.kubernetes.io/name: zabbix-mcp
+    app.kubernetes.io/component: config
+data:
+  config.yaml: |
+    mode:
+      read_only: true
+
+    zabbix:
+      url: "https://zabbix.example.com/api_jsonrpc.php"
+
+    cache:
+      ttl_sec: 600
+      redis_url: "redis://redis-master:6379/0"
+
+    limits:
+      max_hosts_per_query: 50
+      max_items_per_query: 1000
+      rate_limit_calls: 10
+      rate_limit_period: 1
+
+    worker:
+      scan_interval_sec: 30
+      concurrent_groups: 5
