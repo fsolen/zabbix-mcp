@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "zabbix-mcp": {
+      "command": "python",
+      "args": ["/path/to/zabbix-mcp/mcp_server.py"],
+      "env": {
+        "PYTHONPATH": "/path/to/zabbix-mcp"
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+# MCP Server için gerekli paketler (local kurulum)
+mcp
+httpx
