@@ -24,12 +24,22 @@ router = APIRouter(prefix="/mcp", tags=["MCP"])
 TOOLS = [
     {
         "name": "get_zabbix_status",
-        "description": "Zabbix MCP sisteminin genel durumunu gösterir.",
+        "description": "Zabbix MCP sisteminin genel durumunu gösterir. Redis bağlantısı ve versiyon bilgisi içerir.",
+        "inputSchema": {"type": "object", "properties": {}, "required": []}
+    },
+    {
+        "name": "get_health",
+        "description": "API sağlık durumunu kontrol eder.",
+        "inputSchema": {"type": "object", "properties": {}, "required": []}
+    },
+    {
+        "name": "list_groups",
+        "description": "Mevcut tüm Zabbix host gruplarını listeler.",
         "inputSchema": {"type": "object", "properties": {}, "required": []}
     },
     {
         "name": "get_all_analysis",
-        "description": "Tüm Zabbix host gruplarının analiz sonuçlarını getirir.",
+        "description": "Tüm Zabbix host gruplarının analiz sonuçlarını getirir. Her grup için host sayısı, item sayısı, unsupported item oranı, trigger durumu ve noise score içerir.",
         "inputSchema": {"type": "object", "properties": {}, "required": []}
     },
     {
@@ -40,7 +50,7 @@ TOOLS = [
             "properties": {
                 "group_name": {
                     "type": "string",
-                    "description": "Analiz edilecek host grup adı"
+                    "description": "Analiz edilecek host grup adı (örn: 'Linux Servers')"
                 }
             },
             "required": ["group_name"]
@@ -48,20 +58,42 @@ TOOLS = [
     },
     {
         "name": "find_problematic_groups",
-        "description": "Sorunlu host gruplarını bulur.",
+        "description": "Sorunlu host gruplarını bulur. Yüksek noise score veya çok sayıda unsupported item olan grupları listeler.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "noise_threshold": {"type": "number", "default": 0.2},
-                "unsupported_threshold": {"type": "number", "default": 10}
+                "noise_threshold": {
+                    "type": "number",
+                    "description": "Noise score eşiği (0-1 arası, default: 0.2)",
+                    "default": 0.2
+                },
+                "unsupported_threshold": {
+                    "type": "number",
+                    "description": "Unsupported item yüzdesi eşiği (0-100, default: 10)",
+                    "default": 10
+                }
             },
             "required": []
         }
     },
     {
         "name": "get_summary",
-        "description": "Tüm Zabbix altyapısının özet istatistiklerini getirir.",
+        "description": "Tüm Zabbix altyapısının özet istatistiklerini getirir: toplam host, item, trigger sayıları ve genel sağlık durumu.",
         "inputSchema": {"type": "object", "properties": {}, "required": []}
+    },
+    {
+        "name": "search_groups",
+        "description": "Host gruplarını anahtar kelimeye göre arar.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "keyword": {
+                    "type": "string",
+                    "description": "Aranacak anahtar kelime"
+                }
+            },
+            "required": ["keyword"]
+        }
     }
 ]
 
@@ -82,6 +114,23 @@ async def execute_tool(name: str, arguments: dict, cache: RedisCache) -> str:
             "cache": health,
             "version": "1.0.0"
         }, indent=2)
+    
+    elif name == "get_health":
+        health = cache.health_check()
+        status = "✅ Sağlıklı" if health["redis_connected"] else "⚠️ Redis bağlantısı yok"
+        return f"Sistem Durumu: {status}\nRedis: {'Bağlı' if health['redis_connected'] else 'Bağlı Değil'}"
+    
+    elif name == "list_groups":
+        groups = cache.get_all("analysis:*")
+        if not groups:
+            return "Henüz analiz verisi yok. Worker podları çalışıyor mu?"
+        
+        result = f"📋 **{len(groups)} Host Grubu Mevcut:**\n\n"
+        for key, group in sorted(groups.items()):
+            metrics = group.get("metrics", {})
+            result += f"• {group.get('group', key)} ({metrics.get('hosts', 0)} host, {metrics.get('items', 0)} item)\n"
+        
+        return result
     
     elif name == "get_all_analysis":
         data = cache.get_all("analysis:*")
@@ -205,6 +254,33 @@ async def execute_tool(name: str, arguments: dict, cache: RedisCache) -> str:
 - Unsupported Items: {total_unsupported:,} (%{unsupported_pct:.1f})
 - Aktif Triggerlar: {total_active:,}
 """
+    
+    elif name == "search_groups":
+        keyword = arguments.get("keyword", "").lower()
+        if not keyword:
+            return "Anahtar kelime gerekli."
+        
+        groups = cache.get_all("analysis:*")
+        matches = []
+        
+        for key, group in groups.items():
+            group_name = group.get("group", key)
+            if keyword in group_name.lower():
+                metrics = group.get("metrics", {})
+                matches.append({
+                    "name": group_name,
+                    "hosts": metrics.get("hosts", 0),
+                    "items": metrics.get("items", 0)
+                })
+        
+        if not matches:
+            return f"'{keyword}' ile eşleşen grup bulunamadı."
+        
+        result = f"🔍 **'{keyword}' için {len(matches)} sonuç:**\n\n"
+        for m in matches:
+            result += f"• {m['name']} ({m['hosts']} host, {m['items']} item)\n"
+        
+        return result
     
     return f"Bilinmeyen tool: {name}"
 
