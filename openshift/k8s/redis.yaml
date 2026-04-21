@@ -58,6 +58,10 @@ spec:
             - ""
             - --stop-writes-on-bgsave-error
             - "no"
+            - --protected-mode
+            - "no"
+            - --bind
+            - "0.0.0.0"
           ports:
             - containerPort: 6379
               name: redis
