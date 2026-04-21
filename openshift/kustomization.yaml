@@ -17,7 +17,7 @@ resources:
 
 
 namespace: zabbix-mcp
-labels:
+commonLabels:
   app.kubernetes.io/part-of: zabbix-mcp
   app.kubernetes.io/version: "1.0.0"
   app.openshift.io/runtime: python
