@@ -102,15 +102,16 @@ class ZabbixClient:
             "output": ["hostid", "name"]
         })
 
-    async def get_items_paginated(self, hostids, batch_size=1000):
-        """500k item için pagination ile tüm item'ları çeker"""
+    async def get_items_paginated(self, hostids, batch_size=5000):
+        """Item'ları çeker - MAX_ITEMS limiti ile"""
+        MAX_ITEMS = 50000  # Tek sorguda max item
         items = []
         offset = 0
         
-        while True:
+        while offset < MAX_ITEMS:
             batch = await self.call("item.get", {
                 "hostids": hostids,
-                "output": ["itemid", "name", "state", "status", "lastvalue"],
+                "output": ["itemid", "state", "status"],  # Minimal output
                 "limit": batch_size,
                 "offset": offset
             })
@@ -119,20 +120,56 @@ class ZabbixClient:
                 break
             
             items.extend(batch)
-            offset += batch_size
+            offset += len(batch)
             
-            logger.debug("items_fetched", count=len(batch), total=len(items), offset=offset)
+            logger.debug("items_fetched", count=len(batch), total=len(items))
             
-            # Tüm item'lar çekildiyse çık
             if len(batch) < batch_size:
                 break
         
+        if offset >= MAX_ITEMS:
+            logger.warning("items_limit_reached", hostids=len(hostids), limit=MAX_ITEMS)
+        
         return items
 
+    async def get_items_count(self, hostids):
+        """Item sayısını al (çekmeden)"""
+        result = await self.call("item.get", {
+            "hostids": hostids,
+            "countOutput": True
+        })
+        return int(result) if result else 0
+
+    async def get_unsupported_count(self, hostids):
+        """Unsupported item sayısını al"""
+        result = await self.call("item.get", {
+            "hostids": hostids,
+            "filter": {"state": 1},
+            "countOutput": True
+        })
+        return int(result) if result else 0
+
     async def get_triggers(self, hostids):
+        """Get triggers with minimal output and limit"""
         return await self.call("trigger.get", {
             "hostids": hostids,
-            "output": ["triggerid", "description", "priority", "value", "lastchange"],
-            "expandDescription": True,
-            "selectHosts": ["hostid", "name"]
+            "output": ["triggerid", "value"],  # Minimal - sadece id ve durum
+            "limit": 10000,  # Safety limit
+            "skipDependent": True,  # Skip dependent triggers
+            "only_true": False
         })
+
+    async def get_trigger_counts(self, hostids):
+        """Get total and active trigger counts"""
+        total = await self.call("trigger.get", {
+            "hostids": hostids,
+            "countOutput": True
+        })
+        
+        active = await self.call("trigger.get", {
+            "hostids": hostids,
+            "filter": {"value": 1},
+            "countOutput": True
+        })
+        
+        return int(total) if total else 0, int(active) if active else 0

@@ -38,7 +38,7 @@ signal.signal(signal.SIGINT, stop)
 
 
 async def process_group(client: ZabbixClient, group: dict, cfg: dict) -> dict:
-    """Process a single host group"""
+    """Process a single host group using COUNT queries (fast, no data transfer)"""
     gid = group["groupid"]
     gname = group["name"]
     
@@ -48,27 +48,46 @@ async def process_group(client: ZabbixClient, group: dict, cfg: dict) -> dict:
             return None
         
         host_ids = [h["hostid"] for h in hosts]
-        all_items = []
-        all_triggers = []
         
-        # Chunk hosts for API calls
-        chunk_size = cfg["limits"]["max_hosts_per_query"]
-        item_limit = cfg["limits"]["max_items_per_query"]
+        # Use COUNT queries instead of fetching all items
+        total_items = await client.get_items_count(host_ids)
+        unsupported_items = await client.get_unsupported_count(host_ids)
         
-        for h_chunk in chunk_list(host_ids, chunk_size):
-            items = await client.get_items_paginated(h_chunk, item_limit)
-            triggers = await client.get_triggers(h_chunk)
-            all_items.extend(items)
-            all_triggers.extend(triggers)
+        # Get trigger counts (not data)
+        total_triggers, active_triggers = await client.get_trigger_counts(host_ids)
         
-        result = analyze(gname, hosts, all_items, all_triggers)
+        # Calculate metrics
+        noise = active_triggers / total_triggers if total_triggers > 0 else 0
+        unsupported_pct = unsupported_items / total_items if total_items > 0 else 0
+        
+        recs = []
+        if unsupported_pct > 0.1:
+            recs.append("fix unsupported items")
+        if noise > 0.3:
+            recs.append("reduce trigger noise")
+        if not recs:
+            recs.append("healthy")
+        
+        result = {
+            "group": gname,
+            "metrics": {
+                "hosts": len(hosts),
+                "items": total_items,
+                "unsupported": unsupported_items,
+                "triggers": total_triggers,
+                "active_triggers": active_triggers
+            },
+            "analysis": {"noise_score": round(noise, 2)},
+            "recommendations": recs
+        }
+        
         groups_processed.labels(status="success").inc()
         
         logger.info("group_processed", 
                     group=gname, 
                     hosts=len(hosts), 
-                    items=len(all_items),
-                    triggers=len(all_triggers))
+                    items=total_items,
+                    triggers=total_triggers)
         
         return result
         
