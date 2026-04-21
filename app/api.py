@@ -41,6 +41,22 @@ app = FastAPI(
 )
 
 
+@app.get("/")
+async def root():
+    """Root endpoint - API info"""
+    return {
+        "name": "Zabbix MCP API",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/health",
+            "ready": "/ready",
+            "metrics": "/metrics",
+            "analysis": "/analysis",
+            "status": "/status"
+        }
+    }
+
+
 @app.get("/health")
 async def health():
     """Kubernetes liveness probe"""
