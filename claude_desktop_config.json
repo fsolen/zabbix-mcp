@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "zabbix-mcp": {
+    "zabbix": {
       "command": "python",
-      "args": ["/path/to/zabbix-mcp/mcp_server.py"],
+      "args": ["/Users/fatih.solen/Documents/SYS/zabbix-mcp/mcp_server.py"],
       "env": {
-        "PYTHONPATH": "/path/to/zabbix-mcp"
+        "MCP_API_URL": "https://zabbix-mcp.apps.ocptest.tmll.sahibindenlocal.net"
       }
     }
   }
