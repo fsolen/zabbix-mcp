@@ -41,7 +41,22 @@ class ZabbixClient:
                 r = await self.client.post(self.url, json=payload)
                 r.raise_for_status()
                 api_calls.labels(method=method, status="success").inc()
-                return r.json()
+                
+                # Check for empty response
+                if not r.content:
+                    logger.error("zabbix_empty_response", method=method, url=self.url)
+                    raise Exception(f"Empty response from Zabbix API: {self.url}")
+                
+                # Try to parse JSON
+                try:
+                    return r.json()
+                except Exception as e:
+                    logger.error("zabbix_invalid_json", 
+                               method=method, 
+                               content=r.text[:500],
+                               status_code=r.status_code)
+                    raise Exception(f"Invalid JSON from Zabbix: {r.text[:200]}")
+                    
             except Exception as e:
                 api_calls.labels(method=method, status="error").inc()
                 logger.error("zabbix_api_error", method=method, error=str(e))
