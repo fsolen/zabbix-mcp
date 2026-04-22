@@ -1,24 +1,71 @@
-mode:
-  read_only: true
+# =============================================================================
+# Zabbix MCP Configuration
+# =============================================================================
+# Bu dosya local development için örnek konfigürasyondur.
+# OpenShift/K8s deployment'ta ConfigMap kullanılır.
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# Çalışma Modu
+# -----------------------------------------------------------------------------
+mode:
+  read_only: true              # true: yazma tool'ları gizlenir (güvenli)
+
+# -----------------------------------------------------------------------------
+# Zabbix API Bağlantısı
+# -----------------------------------------------------------------------------
 zabbix:
   url: "https://zabbix.example.com/api_jsonrpc.php"
-  timeout: 30
-  max_retries: 3
+  timeout: 60                  # API timeout (saniye)
+  max_retries: 3               # Retry sayısı
+  verify_ssl: true             # SSL sertifika doğrulama
+  skip_version_check: false    # API version kontrolünü atla
 
+# -----------------------------------------------------------------------------
+# Redis Bağlantısı
+# -----------------------------------------------------------------------------
 redis:
-  url: "redis://redis-master:6379/0"
+  url: "redis://localhost:6379/0"
 
+# -----------------------------------------------------------------------------
+# Cache Ayarları
+# -----------------------------------------------------------------------------
 cache:
-  ttl_sec: 600
+  ttl_sec: 900                 # Cache süresi (15 dakika)
 
+# -----------------------------------------------------------------------------
+# Sorgu Limitleri
+# -----------------------------------------------------------------------------
 limits:
-  max_hosts_per_query: 50
-  max_items_per_query: 1000
-  rate_limit_calls: 10
-  rate_limit_period: 1
-  concurrent_groups: 5
+  max_hosts_per_query: 100     # Tek sorguda max host
+  max_items_per_query: 5000    # Tek sorguda max item
+  concurrent_groups: 3         # Paralel grup işleme
 
+# -----------------------------------------------------------------------------
+# Rate Limiting (Zabbix API Koruması)
+# -----------------------------------------------------------------------------
+rate_limit:
+  enabled: true
+  max_requests: 60             # Dakikada max istek
+  window_minutes: 1
+  calls_per_second: 5          # Saniyede max API çağrısı
+
+# -----------------------------------------------------------------------------
+# Background Worker
+# -----------------------------------------------------------------------------
 worker:
-  scan_interval_sec: 30
+  scan_interval_sec: 600       # Scan aralığı (10 dakika)
   metrics_port: 9090
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+logging:
+  level: INFO                  # DEBUG, INFO, WARNING, ERROR
+
+# -----------------------------------------------------------------------------
+# Tool Filtering (tag bazlı)
+# -----------------------------------------------------------------------------
+# Belirli tag'lere sahip tool'ları devre dışı bırakmak için kullanın.
+# Örnek: ["write", "script", "maintenance"]
+disabled_tags: []
