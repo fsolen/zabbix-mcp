@@ -35,7 +35,7 @@ async def get_zabbix_client():
             cfg = load_config()
             rate_limiter = DistributedRateLimiter(
                 redis_url=cfg["redis"]["url"],
-                calls_per_second=cfg["limits"]["rate_limit_calls"]
+                calls_per_second=cfg.get("rate_limit", {}).get("calls_per_second", 5)
             )
             _zabbix_client = ZabbixClient(cfg["zabbix"], rate_limiter)
             await _zabbix_client.login()
@@ -1078,10 +1078,32 @@ async def mcp_info():
     }
 
 
+def get_filtered_tools():
+    """Get tools filtered by disabled_tags and read_only mode"""
+    cfg = load_config()
+    disabled_tags = set(cfg.get("disabled_tags", []))
+    read_only = cfg.get("mode", {}).get("read_only", True)
+    
+    # Add 'write' to disabled tags if read_only mode
+    if read_only:
+        disabled_tags.add("write")
+    
+    filtered = []
+    for tool in TOOLS:
+        tool_tags = set(tool.get("tags", []))
+        # Skip if any of tool's tags is in disabled_tags
+        if not tool_tags.intersection(disabled_tags):
+            # Remove tags from output (not part of MCP spec)
+            clean_tool = {k: v for k, v in tool.items() if k != "tags"}
+            filtered.append(clean_tool)
+    
+    return filtered
+
+
 @router.get("/tools")
 async def list_tools():
     """List available tools"""
-    return {"tools": TOOLS}
+    return {"tools": get_filtered_tools()}
 
 
 @router.post("/message")
@@ -1115,7 +1137,7 @@ async def handle_message(request: Request):
             return {
                 "jsonrpc": "2.0",
                 "id": msg_id,
-                "result": {"tools": TOOLS}
+                "result": {"tools": get_filtered_tools()}
             }
         
         elif method == "tools/call":
@@ -1215,7 +1237,7 @@ async def sse_message(request: Request):
             return {
                 "jsonrpc": "2.0",
                 "id": msg_id,
-                "result": {"tools": TOOLS}
+                "result": {"tools": get_filtered_tools()}
             }
         
         elif method == "tools/call":

@@ -242,7 +242,7 @@ async def main():
     
     rate_limiter = DistributedRateLimiter(
         redis_url=cfg["redis"]["url"],
-        calls_per_second=cfg["limits"]["rate_limit_calls"]
+        calls_per_second=cfg.get("rate_limit", {}).get("calls_per_second", 5)
     )
     
     client = ZabbixClient(cfg["zabbix"], rate_limiter)
