@@ -208,3 +208,382 @@ class ZabbixClient:
             "active_triggers": int(active_triggers) if active_triggers else 0,
             "groups": int(total_groups) if total_groups else 0
         }
+
+    # ==================== QUERY METHODS ====================
+    
+    async def api_version(self):
+        """Get Zabbix API version"""
+        return await self.call("apiinfo.version", [])
+
+    async def host_get(self, groupids=None, templateids=None, proxyids=None, 
+                       search=None, filter_dict=None, limit=100):
+        """Get hosts with flexible filtering"""
+        params = {
+            "output": ["hostid", "host", "name", "status", "description"],
+            "selectGroups": ["groupid", "name"],
+            "selectInterfaces": ["interfaceid", "ip", "dns", "type"],
+            "selectParentTemplates": ["templateid", "name"],
+            "limit": limit
+        }
+        if groupids:
+            params["groupids"] = groupids
+        if templateids:
+            params["templateids"] = templateids
+        if proxyids:
+            params["proxyids"] = proxyids
+        if search:
+            params["search"] = {"name": search}
+            params["searchWildcardsEnabled"] = True
+        if filter_dict:
+            params["filter"] = filter_dict
+        return await self.call("host.get", params)
+
+    async def hostgroup_get(self, search=None, filter_dict=None, limit=500):
+        """Get host groups with filtering"""
+        params = {
+            "output": ["groupid", "name"],
+            "selectHosts": "count",
+            "limit": limit
+        }
+        if search:
+            params["search"] = {"name": search}
+            params["searchWildcardsEnabled"] = True
+        if filter_dict:
+            params["filter"] = filter_dict
+        return await self.call("hostgroup.get", params)
+
+    async def template_get(self, search=None, hostids=None, limit=200):
+        """Get templates with filtering"""
+        params = {
+            "output": ["templateid", "host", "name", "description"],
+            "selectHosts": "count",
+            "selectItems": "count",
+            "selectTriggers": "count",
+            "limit": limit
+        }
+        if search:
+            params["search"] = {"name": search}
+            params["searchWildcardsEnabled"] = True
+        if hostids:
+            params["hostids"] = hostids
+        return await self.call("template.get", params)
+
+    async def item_get(self, hostids=None, groupids=None, templateids=None, 
+                       search=None, filter_dict=None, limit=500):
+        """Get items with filtering"""
+        params = {
+            "output": ["itemid", "name", "key_", "type", "value_type", "state", 
+                      "status", "lastvalue", "lastclock", "units", "delay"],
+            "selectHosts": ["hostid", "name"],
+            "limit": limit
+        }
+        if hostids:
+            params["hostids"] = hostids
+        if groupids:
+            params["groupids"] = groupids
+        if templateids:
+            params["templateids"] = templateids
+        if search:
+            params["search"] = {"name": search}
+            params["searchWildcardsEnabled"] = True
+        if filter_dict:
+            params["filter"] = filter_dict
+        return await self.call("item.get", params)
+
+    async def trigger_get(self, hostids=None, groupids=None, templateids=None,
+                          only_problems=False, min_severity=None, limit=500):
+        """Get triggers with filtering"""
+        params = {
+            "output": ["triggerid", "description", "expression", "priority", 
+                      "value", "status", "state", "lastchange"],
+            "selectHosts": ["hostid", "name"],
+            "expandDescription": True,
+            "limit": limit
+        }
+        if hostids:
+            params["hostids"] = hostids
+        if groupids:
+            params["groupids"] = groupids
+        if templateids:
+            params["templateids"] = templateids
+        if only_problems:
+            params["only_true"] = True
+        if min_severity is not None:
+            params["min_severity"] = min_severity
+        return await self.call("trigger.get", params)
+
+    async def problem_get(self, hostids=None, groupids=None, min_severity=None,
+                          time_from=None, acknowledged=None, limit=500):
+        """Get current problems"""
+        params = {
+            "output": ["eventid", "objectid", "clock", "name", "severity", 
+                      "acknowledged", "suppressed"],
+            "selectHosts": ["hostid", "name"],
+            "selectTags": "extend",
+            "recent": True,
+            "sortfield": ["eventid"],
+            "sortorder": "DESC",
+            "limit": limit
+        }
+        if hostids:
+            params["hostids"] = hostids
+        if groupids:
+            params["groupids"] = groupids
+        if min_severity is not None:
+            params["severities"] = list(range(min_severity, 6))
+        if time_from:
+            params["time_from"] = time_from
+        if acknowledged is not None:
+            params["acknowledged"] = acknowledged
+        return await self.call("problem.get", params)
+
+    async def event_get(self, hostids=None, objectids=None, time_from=None, 
+                        time_till=None, limit=500):
+        """Get events with filtering"""
+        params = {
+            "output": ["eventid", "clock", "value", "acknowledged", "severity", "name"],
+            "selectHosts": ["hostid", "name"],
+            "selectTags": "extend",
+            "sortfield": ["clock"],
+            "sortorder": "DESC",
+            "limit": limit
+        }
+        if hostids:
+            params["hostids"] = hostids
+        if objectids:
+            params["objectids"] = objectids
+        if time_from:
+            params["time_from"] = time_from
+        if time_till:
+            params["time_till"] = time_till
+        return await self.call("event.get", params)
+
+    async def history_get(self, itemids, history_type=0, time_from=None, 
+                          time_till=None, limit=1000):
+        """Get history data for items"""
+        params = {
+            "output": "extend",
+            "itemids": itemids,
+            "history": history_type,
+            "sortfield": "clock",
+            "sortorder": "DESC",
+            "limit": limit
+        }
+        if time_from:
+            params["time_from"] = time_from
+        if time_till:
+            params["time_till"] = time_till
+        return await self.call("history.get", params)
+
+    async def trend_get(self, itemids, time_from=None, time_till=None, limit=500):
+        """Get trend data for items"""
+        params = {
+            "output": "extend",
+            "itemids": itemids,
+            "limit": limit
+        }
+        if time_from:
+            params["time_from"] = time_from
+        if time_till:
+            params["time_till"] = time_till
+        return await self.call("trend.get", params)
+
+    async def maintenance_get(self, hostids=None, groupids=None, limit=100):
+        """Get maintenance periods"""
+        params = {
+            "output": ["maintenanceid", "name", "active_since", "active_till", 
+                      "description"],
+            "selectHosts": ["hostid", "name"],
+            "selectGroups": ["groupid", "name"],
+            "selectTimeperiods": "extend",
+            "limit": limit
+        }
+        if hostids:
+            params["hostids"] = hostids
+        if groupids:
+            params["groupids"] = groupids
+        return await self.call("maintenance.get", params)
+
+    async def user_get(self, search=None, limit=100):
+        """Get users"""
+        params = {
+            "output": ["userid", "username", "name", "surname", "roleid"],
+            "selectRole": ["roleid", "name"],
+            "limit": limit
+        }
+        if search:
+            params["search"] = {"username": search}
+        return await self.call("user.get", params)
+
+    async def proxy_get(self, limit=100):
+        """Get proxies"""
+        params = {
+            "output": ["proxyid", "name", "operating_mode", "description", "lastaccess"],
+            "selectHosts": "count",
+            "limit": limit
+        }
+        return await self.call("proxy.get", params)
+
+    async def action_get(self, eventsource=None, limit=100):
+        """Get actions"""
+        params = {
+            "output": ["actionid", "name", "eventsource", "status"],
+            "selectOperations": "extend",
+            "limit": limit
+        }
+        if eventsource is not None:
+            params["filter"] = {"eventsource": eventsource}
+        return await self.call("action.get", params)
+
+    async def mediatype_get(self, limit=100):
+        """Get media types"""
+        return await self.call("mediatype.get", {
+            "output": ["mediatypeid", "name", "type", "status", "description"],
+            "limit": limit
+        })
+
+    async def script_get(self, hostid=None, limit=100):
+        """Get scripts"""
+        params = {
+            "output": ["scriptid", "name", "command", "type", "scope"],
+            "limit": limit
+        }
+        if hostid:
+            params["hostids"] = hostid
+        return await self.call("script.get", params)
+
+    async def usermacro_get(self, hostids=None, globalmacroids=None, limit=500):
+        """Get user macros"""
+        params = {
+            "output": "extend",
+            "selectHosts": ["hostid", "name"],
+            "limit": limit
+        }
+        if hostids:
+            params["hostids"] = hostids
+        if globalmacroids:
+            params["globalmacroids"] = globalmacroids
+        return await self.call("usermacro.get", params)
+
+    async def graph_get(self, hostids=None, groupids=None, search=None, limit=200):
+        """Get graphs"""
+        params = {
+            "output": ["graphid", "name", "width", "height", "graphtype"],
+            "selectHosts": ["hostid", "name"],
+            "limit": limit
+        }
+        if hostids:
+            params["hostids"] = hostids
+        if groupids:
+            params["groupids"] = groupids
+        if search:
+            params["search"] = {"name": search}
+        return await self.call("graph.get", params)
+
+    async def discoveryrule_get(self, hostids=None, limit=200):
+        """Get LLD discovery rules"""
+        params = {
+            "output": ["itemid", "name", "key_", "type", "status", "delay"],
+            "selectHosts": ["hostid", "name"],
+            "limit": limit
+        }
+        if hostids:
+            params["hostids"] = hostids
+        return await self.call("discoveryrule.get", params)
+
+    async def sla_get(self, limit=100):
+        """Get SLAs"""
+        return await self.call("sla.get", {
+            "output": "extend",
+            "selectServiceTags": "extend",
+            "limit": limit
+        })
+
+    async def service_get(self, limit=200):
+        """Get services"""
+        return await self.call("service.get", {
+            "output": ["serviceid", "name", "status", "algorithm"],
+            "selectParents": ["serviceid", "name"],
+            "selectChildren": ["serviceid", "name"],
+            "limit": limit
+        })
+
+    # ==================== MANAGEMENT METHODS (require write permission) ====================
+
+    async def host_create(self, name, groupids, interfaces=None, templateids=None, 
+                          description=None):
+        """Create a new host"""
+        params = {
+            "host": name,
+            "groups": [{"groupid": gid} for gid in groupids]
+        }
+        if interfaces:
+            params["interfaces"] = interfaces
+        else:
+            # Default agent interface
+            params["interfaces"] = [{
+                "type": 1, "main": 1, "useip": 1, "ip": "127.0.0.1", 
+                "dns": "", "port": "10050"
+            }]
+        if templateids:
+            params["templates"] = [{"templateid": tid} for tid in templateids]
+        if description:
+            params["description"] = description
+        return await self.call("host.create", params)
+
+    async def host_update(self, hostid, **kwargs):
+        """Update host properties"""
+        params = {"hostid": hostid}
+        params.update(kwargs)
+        return await self.call("host.update", params)
+
+    async def host_delete(self, hostids):
+        """Delete hosts"""
+        return await self.call("host.delete", hostids)
+
+    async def hostgroup_create(self, name):
+        """Create a host group"""
+        return await self.call("hostgroup.create", {"name": name})
+
+    async def hostgroup_update(self, groupid, name):
+        """Update host group"""
+        return await self.call("hostgroup.update", {"groupid": groupid, "name": name})
+
+    async def hostgroup_delete(self, groupids):
+        """Delete host groups"""
+        return await self.call("hostgroup.delete", groupids)
+
+    async def maintenance_create(self, name, active_since, active_till, groupids=None,
+                                  hostids=None, description=None):
+        """Create maintenance period"""
+        params = {
+            "name": name,
+            "active_since": active_since,
+            "active_till": active_till,
+            "timeperiods": [{"timeperiod_type": 0}]
+        }
+        if groupids:
+            params["groups"] = [{"groupid": gid} for gid in groupids]
+        if hostids:
+            params["hosts"] = [{"hostid": hid} for hid in hostids]
+        if description:
+            params["description"] = description
+        return await self.call("maintenance.create", params)
+
+    async def maintenance_delete(self, maintenanceids):
+        """Delete maintenance periods"""
+        return await self.call("maintenance.delete", maintenanceids)
+
+    async def event_acknowledge(self, eventids, message=None, action=1):
+        """Acknowledge events. Action: 1=close, 2=ack, 4=add message, 8=change severity"""
+        params = {"eventids": eventids, "action": action}
+        if message:
+            params["message"] = message
+        return await self.call("event.acknowledge", params)
+
+    async def script_execute(self, scriptid, hostid):
+        """Execute a script on a host"""
+        return await self.call("script.execute", {
+            "scriptid": scriptid, 
+            "hostid": hostid
+        })
