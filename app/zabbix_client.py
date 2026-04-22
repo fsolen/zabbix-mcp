@@ -173,3 +173,38 @@ class ZabbixClient:
         })
         
         return int(total) if total else 0, int(active) if active else 0
+
+    async def get_global_stats(self):
+        """Get global Zabbix statistics (unique counts)"""
+        # Total unique hosts
+        total_hosts = await self.call("host.get", {"countOutput": True})
+        
+        # Total unique items  
+        total_items = await self.call("item.get", {"countOutput": True})
+        
+        # Unsupported items
+        unsupported_items = await self.call("item.get", {
+            "filter": {"state": 1},
+            "countOutput": True
+        })
+        
+        # Total triggers
+        total_triggers = await self.call("trigger.get", {"countOutput": True})
+        
+        # Active (problem) triggers
+        active_triggers = await self.call("trigger.get", {
+            "filter": {"value": 1},
+            "countOutput": True
+        })
+        
+        # Total host groups
+        total_groups = await self.call("hostgroup.get", {"countOutput": True})
+        
+        return {
+            "hosts": int(total_hosts) if total_hosts else 0,
+            "items": int(total_items) if total_items else 0,
+            "unsupported": int(unsupported_items) if unsupported_items else 0,
+            "triggers": int(total_triggers) if total_triggers else 0,
+            "active_triggers": int(active_triggers) if active_triggers else 0,
+            "groups": int(total_groups) if total_groups else 0
+        }

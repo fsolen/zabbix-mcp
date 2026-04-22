@@ -216,41 +216,59 @@ async def execute_tool(name: str, arguments: dict, cache: RedisCache) -> str:
         return result
     
     elif name == "get_summary":
+        # Get global stats (unique counts from Zabbix)
+        global_stats = cache.get("global:stats")
         groups = cache.get_all("analysis:*")
         
-        total_hosts = 0
-        total_items = 0
-        total_unsupported = 0
-        total_triggers = 0
-        total_active = 0
-        healthy_groups = 0
+        if global_stats:
+            # Use accurate global stats
+            total_hosts = global_stats.get("hosts", 0)
+            total_items = global_stats.get("items", 0)
+            total_unsupported = global_stats.get("unsupported", 0)
+            total_triggers = global_stats.get("triggers", 0)
+            total_active = global_stats.get("active_triggers", 0)
+            total_groups = global_stats.get("groups", 0)
+        else:
+            # Fallback to group-based calculation (may have duplicates)
+            total_hosts = 0
+            total_items = 0
+            total_unsupported = 0
+            total_triggers = 0
+            total_active = 0
+            total_groups = len(groups)
+            
+            for group in groups.values():
+                metrics = group.get("metrics", {})
+                total_hosts += metrics.get("hosts", 0)
+                total_items += metrics.get("items", 0)
+                total_unsupported += metrics.get("unsupported", 0)
+                total_triggers += metrics.get("triggers", 0)
+                total_active += metrics.get("active_triggers", 0)
         
+        # Count healthy groups from analyzed data
+        healthy_groups = 0
+        groups_with_hosts = 0
         for group in groups.values():
-            metrics = group.get("metrics", {})
             recs = group.get("recommendations", [])
-            
-            total_hosts += metrics.get("hosts", 0)
-            total_items += metrics.get("items", 0)
-            total_unsupported += metrics.get("unsupported", 0)
-            total_triggers += metrics.get("triggers", 0)
-            total_active += metrics.get("active_triggers", 0)
-            
+            hosts = group.get("metrics", {}).get("hosts", 0)
+            if hosts > 0:
+                groups_with_hosts += 1
             if "healthy" in recs:
                 healthy_groups += 1
         
         unsupported_pct = (total_unsupported / total_items * 100) if total_items > 0 else 0
-        health_pct = (healthy_groups / len(groups) * 100) if groups else 0
+        health_pct = (healthy_groups / groups_with_hosts * 100) if groups_with_hosts > 0 else 0
         
         return f"""📈 **Zabbix Altyapı Özeti**
 
 **Genel İstatistikler:**
-- Toplam Host Grubu: {len(groups)}
+- Toplam Host Grubu: {total_groups} ({groups_with_hosts} aktif)
 - Toplam Host: {total_hosts:,}
 - Toplam Item: {total_items:,}
 - Toplam Trigger: {total_triggers:,}
 
 **Sağlık Durumu:**
-- Sağlıklı Gruplar: {healthy_groups}/{len(groups)} (%{health_pct:.1f})
+- Sağlıklı Gruplar: {healthy_groups}/{groups_with_hosts} (%{health_pct:.1f})
 - Unsupported Items: {total_unsupported:,} (%{unsupported_pct:.1f})
 - Aktif Triggerlar: {total_active:,}
 """

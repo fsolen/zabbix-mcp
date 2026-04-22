@@ -44,8 +44,21 @@ async def process_group(client: ZabbixClient, group: dict, cfg: dict) -> dict:
     
     try:
         hosts = await client.get_hosts(gid)
+        
+        # Empty groups - still cache them with zero metrics
         if not hosts:
-            return None
+            return {
+                "group": gname,
+                "metrics": {
+                    "hosts": 0,
+                    "items": 0,
+                    "unsupported": 0,
+                    "triggers": 0,
+                    "active_triggers": 0
+                },
+                "analysis": {"noise_score": 0},
+                "recommendations": ["empty group"]
+            }
         
         host_ids = [h["hostid"] for h in hosts]
         
@@ -168,6 +181,14 @@ async def run_scan(client: ZabbixClient, cache: RedisCache, cfg: dict):
                 total_hosts += result["metrics"]["hosts"]
                 total_items += result["metrics"]["items"]
                 processed += 1
+        
+        # Get and store global stats (unique counts from Zabbix)
+        try:
+            global_stats = await client.get_global_stats()
+            cache.set("global:stats", global_stats)
+            logger.info("global_stats_updated", **global_stats)
+        except Exception as e:
+            logger.warning("global_stats_failed", error=str(e))
         
         hosts_scanned.set(total_hosts)
         items_scanned.set(total_items)
