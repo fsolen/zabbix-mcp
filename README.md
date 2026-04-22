@@ -122,7 +122,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 ---
 
-### 🏗️ Mimari Diyagram
+### Mimari Diyagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -172,7 +172,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 ---
 
-### 🛡️ Zabbix Koruma Mekanizmaları
+### Zabbix Koruma Mekanizmaları
 
 | Mekanizma | Nasıl Çalışır | Ayar |
 |-----------|---------------|------|
@@ -185,7 +185,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 ---
 
-## 🤖 MCP Entegrasyonu (Claude Desktop)
+## MCP Entegrasyonu (Claude Desktop)
 
 ### Claude Desktop Konfigürasyonu
 
@@ -223,7 +223,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 ---
 
-## 🔧 Mevcut Tool'lar (35+)
+## Mevcut Tool'lar (35+)
 
 ### 📊 Sistem & İstatistik
 | Tool | Açıklama | Tag |
@@ -232,7 +232,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 | `get_global_stats` | Toplam host/item/trigger sayıları | system |
 | `get_queue` | İşlenmeyi bekleyen item kuyruğu | system |
 
-### 🖥️ Host Yönetimi
+### Host Yönetimi
 | Tool | Açıklama | Tag |
 |------|----------|-----|
 | `get_hosts` | Host listesi (filter, limit, search) | host |
@@ -241,7 +241,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 | `host_enable` | Host'u etkinleştir | host, write |
 | `host_disable` | Host'u devre dışı bırak | host, write |
 
-### ⚠️ Trigger & Problem
+### Trigger & Problem
 | Tool | Açıklama | Tag |
 |------|----------|-----|
 | `get_triggers` | Trigger listesi | trigger |
@@ -250,7 +250,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 | `get_events` | Event geçmişi | trigger |
 | `acknowledge_event` | Problem acknowledge | trigger, write |
 
-### 📈 Metrik & History
+### Metrik & History
 | Tool | Açıklama | Tag |
 |------|----------|-----|
 | `get_items` | Item listesi | item |
@@ -258,21 +258,21 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 | `get_history` | Item history verileri | item |
 | `get_trends` | Trend verileri (hourly/daily) | item |
 
-### 🔧 Maintenance
+### Maintenance
 | Tool | Açıklama | Tag |
 |------|----------|-----|
 | `get_maintenances` | Maintenance listesi | maintenance |
 | `create_maintenance` | Yeni maintenance oluştur | maintenance, write |
 | `delete_maintenance` | Maintenance sil | maintenance, write |
 
-### 📜 Script & Template
+### Script & Template
 | Tool | Açıklama | Tag |
 |------|----------|-----|
 | `get_scripts` | Script listesi | script |
 | `execute_script` | Host üzerinde script çalıştır | script, write |
 | `get_templates` | Template listesi | template |
 
-### 👥 Kullanıcı & Grup
+### Kullanıcı & Grup
 | Tool | Açıklama | Tag |
 |------|----------|-----|
 | `get_users` | Kullanıcı listesi | user |
@@ -281,7 +281,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 ---
 
-## ⚙️ Konfigürasyon
+## Konfigürasyon
 
 ### ConfigMap Yapısı (config.yaml)
 
@@ -344,7 +344,7 @@ disabled_tags: []
 
 ---
 
-## 🚀 Deployment
+## Deployment
 
 ### OpenShift Quick Start
 
@@ -394,7 +394,7 @@ uvicorn app.api:app --reload --port 8080
 
 ---
 
-## 📊 API Endpoints
+## API Endpoints
 
 | Endpoint | Method | Açıklama |
 |----------|--------|----------|
@@ -409,7 +409,7 @@ uvicorn app.api:app --reload --port 8080
 
 ---
 
-## 📁 Dosya Yapısı
+## Dosya Yapısı
 
 ```
 zabbix-mcp/
@@ -438,7 +438,7 @@ zabbix-mcp/
 
 ---
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Cache çalışmıyor
 ```bash
