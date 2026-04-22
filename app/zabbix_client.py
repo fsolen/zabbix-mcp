@@ -314,11 +314,10 @@ class ZabbixClient:
 
     async def problem_get(self, hostids=None, groupids=None, min_severity=None,
                           time_from=None, acknowledged=None, limit=500):
-        """Get current problems"""
+        """Get current problems with host information"""
         params = {
             "output": ["eventid", "objectid", "clock", "name", "severity", 
                       "acknowledged", "suppressed"],
-            "selectHosts": ["hostid", "name"],
             "selectTags": "extend",
             "recent": True,
             "sortfield": ["eventid"],
@@ -335,14 +334,30 @@ class ZabbixClient:
             params["time_from"] = time_from
         if acknowledged is not None:
             params["acknowledged"] = acknowledged
-        return await self.call("problem.get", params)
+        
+        problems = await self.call("problem.get", params)
+        
+        # Enrich with host information via triggers
+        if problems:
+            trigger_ids = list(set(p.get("objectid") for p in problems if p.get("objectid")))
+            if trigger_ids:
+                triggers = await self.call("trigger.get", {
+                    "triggerids": trigger_ids,
+                    "selectHosts": ["hostid", "name"],
+                    "output": ["triggerid"]
+                })
+                trigger_hosts = {t["triggerid"]: t.get("hosts", []) for t in triggers}
+                for problem in problems:
+                    problem["hosts"] = trigger_hosts.get(problem.get("objectid"), [])
+        
+        return problems
 
     async def event_get(self, hostids=None, objectids=None, time_from=None, 
                         time_till=None, limit=500):
-        """Get events with filtering"""
+        """Get events with filtering and host information"""
         params = {
-            "output": ["eventid", "clock", "value", "acknowledged", "severity", "name"],
-            "selectHosts": ["hostid", "name"],
+            "output": ["eventid", "clock", "value", "acknowledged", "severity", 
+                      "name", "objectid", "source", "object"],
             "selectTags": "extend",
             "sortfield": ["clock"],
             "sortorder": "DESC",
@@ -356,7 +371,28 @@ class ZabbixClient:
             params["time_from"] = time_from
         if time_till:
             params["time_till"] = time_till
-        return await self.call("event.get", params)
+        
+        events = await self.call("event.get", params)
+        
+        # Enrich trigger events with host information
+        if events:
+            # Filter trigger events (object=0 means trigger)
+            trigger_events = [e for e in events if str(e.get("object")) == "0"]
+            trigger_ids = list(set(e.get("objectid") for e in trigger_events if e.get("objectid")))
+            if trigger_ids:
+                triggers = await self.call("trigger.get", {
+                    "triggerids": trigger_ids,
+                    "selectHosts": ["hostid", "name"],
+                    "output": ["triggerid"]
+                })
+                trigger_hosts = {t["triggerid"]: t.get("hosts", []) for t in triggers}
+                for event in events:
+                    if str(event.get("object")) == "0":
+                        event["hosts"] = trigger_hosts.get(event.get("objectid"), [])
+                    else:
+                        event["hosts"] = []
+        
+        return events
 
     async def history_get(self, itemids, history_type=0, time_from=None, 
                           time_till=None, limit=1000):
