@@ -17,30 +17,30 @@ mode:
 # Multi-Server Konfigürasyonu
 # Her site için ayrı server tanımı yapılır.
 # Environment variables: ZABBIX_{SERVER}_USER, ZABBIX_{SERVER}_PASS
-# Örnek: ZABBIX_TMLL_USER, ZABBIX_TMLL_PASS
+# Örnek: ZABBIX_DC1_USER, ZABBIX_DC1_PASS
 # Legacy format (zabbix:) da desteklenir.
 
 servers:
-  tmll:
-    url: "https://zabbix-tmll.example.com/api_jsonrpc.php"
+  dc1:
+    url: "https://zabbix-dc1.example.com/api_jsonrpc.php"
     timeout: 60
     max_retries: 3
     verify_ssl: true
   
-  tzla:
-    url: "https://zabbix-tzla.example.com/api_jsonrpc.php"
+  dc2:
+    url: "https://zabbix-dc2.example.com/api_jsonrpc.php"
     timeout: 60
     max_retries: 3
     verify_ssl: true
   
-  gcp:
-    url: "https://zabbix-gcp.example.com/api_jsonrpc.php"
+  cloud:
+    url: "https://zabbix-cloud.example.com/api_jsonrpc.php"
     timeout: 60
     max_retries: 3
     verify_ssl: true
 
 # Default server (server parametresi belirtilmezse kullanılır)
-default_server: tmll
+default_server: dc1
 
 # -----------------------------------------------------------------------------
 # Redis Bağlantısı

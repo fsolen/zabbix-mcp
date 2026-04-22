@@ -15,26 +15,26 @@ data:
     # Her site için ayrı server tanımı
     # Credentials: ZABBIX_{SERVER}_USER, ZABBIX_{SERVER}_PASS (Secret'tan)
     servers:
-      tmll:
-        url: "https://zabbix-tmll.sahibindenlocal.net/api_jsonrpc.php"
+      dc1:
+        url: "https://zabbix-dc1.example.com/api_jsonrpc.php"
         timeout: 60
         max_retries: 3
         verify_ssl: true
       
-      tzla:
-        url: "https://zabbix-tzla.sahibindenlocal.net/api_jsonrpc.php"
+      dc2:
+        url: "https://zabbix-dc2.example.com/api_jsonrpc.php"
         timeout: 60
         max_retries: 3
         verify_ssl: true
       
-      gcp:
-        url: "https://zabbix-gcp.sahibinden.com/api_jsonrpc.php"
+      cloud:
+        url: "https://zabbix-cloud.example.com/api_jsonrpc.php"
         timeout: 60
         max_retries: 3
         verify_ssl: true
 
     # Default server (server parametresi belirtilmezse)
-    default_server: tmll
+    default_server: dc1
 
     redis:
       url: "redis://redis-master:6379/0"

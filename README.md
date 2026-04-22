@@ -4,7 +4,7 @@ Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucu
 
 **Desteklenen ölçek:** 2500+ host, 500k+ item, 100k+ trigger **per server**
 
-## 🎯 Temel Özellikler
+## Temel Özellikler
 
 | Özellik | Açıklama |
 |---------|----------|
@@ -20,7 +20,7 @@ Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucu
 
 ---
 
-## 🌐 Multi-Server Mimarisi
+## Multi-Server Mimarisi
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -39,7 +39,7 @@ Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucu
 │   │  • list_servers     → Bağlı server listesi                       │      │
 │   │  • global_stats     → Tüm serverlardan istatistik                │      │
 │   │  • global_problems  → Tüm serverlardaki problemler               │      │
-│   │  • host_get(server=tmll) → Belirli server'a sorgu                │      │
+│   │  • host_get(server=dc1) → Belirli server'a sorgu                 │      │
 │   │                                                                   │      │
 │   └──────────────────────────────────────────────────────────────────┘      │
 │                    │              │              │                          │
@@ -48,7 +48,7 @@ Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucu
 │   │                   ZabbixClientManager                           │        │
 │   │                                                                 │        │
 │   │   ┌─────────┐     ┌─────────┐     ┌─────────┐                 │        │
-│   │   │  TMLL   │     │  TZLA   │     │   GCP   │                 │        │
+│   │   │   DC1   │     │   DC2   │     │  CLOUD  │                 │        │
 │   │   │ Client  │     │ Client  │     │ Client  │                 │        │
 │   │   └────┬────┘     └────┬────┘     └────┬────┘                 │        │
 │   │        │               │               │                       │        │
@@ -58,7 +58,7 @@ Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucu
              │               │               │
              ▼               ▼               ▼
      ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
-     │ Zabbix TMLL   │ │ Zabbix TZLA   │ │ Zabbix GCP    │
+     │  Zabbix DC1   │ │  Zabbix DC2   │ │ Zabbix Cloud  │
      │ (2500 hosts)  │ │ (1500 hosts)  │ │ (800 hosts)   │
      └───────────────┘ └───────────────┘ └───────────────┘
 ```
@@ -66,37 +66,37 @@ Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucu
 ### Örnek Kullanım
 
 ```
-👤 User: "Tüm sitelerdeki aktif problemleri göster"
+User: "Tüm sitelerdeki aktif problemleri göster"
 
-🤖 Claude: [global_problems tool'unu çağırır]
+Claude: [global_problems tool'unu çağırır]
    
-   🚨 Tüm Sunucularda 15 Aktif Problem:
+   Tüm Sunucularda 15 Aktif Problem:
    
-   🔴 [tmll] Host web-01 - High CPU usage
-      Severity: High, Ack: ❌
+   [dc1] Host web-01 - High CPU usage
+      Severity: High, Ack: No
    
-   🔴 [tzla] Host db-master - Disk space low
-      Severity: Average, Ack: ✅
+   [dc2] Host db-master - Disk space low
+      Severity: Average, Ack: Yes
    
-   🔴 [gcp] Host k8s-node-03 - Memory pressure
-      Severity: High, Ack: ❌
+   [cloud] Host k8s-node-03 - Memory pressure
+      Severity: High, Ack: No
 ```
 
 ```
-👤 User: "TMLL'deki Linux sunucuları listele"
+User: "DC1'deki Linux sunucuları listele"
 
-🤖 Claude: [host_get tool'unu server="tmll" ile çağırır]
+Claude: [host_get tool'unu server="dc1" ile çağırır]
    
-   📋 [tmll] 150 Host:
+   [dc1] 150 Host:
    
-   ✅ linux-web-01 (ID: 10084)
-   ✅ linux-db-01 (ID: 10085)
+   linux-web-01 (ID: 10084)
+   linux-db-01 (ID: 10085)
    ...
 ```
 
 ---
 
-## 🔄 Çalışma Mantığı
+## Çalışma Mantığı
 
 ### Sorgu Akış Diyagramı
 
@@ -152,10 +152,10 @@ cache_key = "zabbix:problem.get:severity_min=3"
 cached_result = await redis.get(cache_key)
 
 if cached_result:
-    # ✅ CACHE HIT - Direkt dön (Zabbix'e sorgu ATILMAZ)
+    # CACHE HIT - Direkt dön (Zabbix'e sorgu ATILMAZ)
     return json.loads(cached_result)
 else:
-    # ❌ CACHE MISS - Rate limit kontrolüne geç
+    # CACHE MISS - Rate limit kontrolüne geç
     pass
 ```
 
@@ -168,7 +168,7 @@ rate_limit_key = f"ratelimit:{minute_bucket}"
 current_count = await redis.incr(rate_limit_key)
 
 if current_count > max_requests_per_minute:
-    # ⛔ RATE LIMITED - 429 döner, Zabbix korunur
+    # RATE LIMITED - 429 döner, Zabbix korunur
     raise HTTPException(429, "Rate limit exceeded")
 
 # calls_per_second kontrolü (token bucket)
@@ -283,17 +283,17 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 ### Örnek Claude Konuşmaları
 
 ```
-👤 User: "Zabbix'te kaç tane aktif problem var?"
+User: "Zabbix'te kaç tane aktif problem var?"
 
-🤖 Claude: [get_problems tool'unu çağırır]
+Claude: [get_problems tool'unu çağırır]
    "Şu anda 23 aktif problem var:
     - 5 High severity (trigger down)
     - 12 Average severity (disk space)
     - 6 Warning severity (CPU usage)"
 
-👤 User: "web-server-01 host'unu maintenance'a al, 2 saat"
+User: "web-server-01 host'unu maintenance'a al, 2 saat"
 
-🤖 Claude: [create_maintenance tool'unu çağırır]
+Claude: [create_maintenance tool'unu çağırır]
    "web-server-01 için 2 saatlik maintenance oluşturuldu.
     Maintenance ID: 12345
     Bitiş: 2024-01-15 16:00:00"
@@ -303,7 +303,7 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 ## Mevcut Tool'lar (35+)
 
-### 📊 Sistem & İstatistik
+### Sistem & İstatistik
 | Tool | Açıklama | Tag |
 |------|----------|-----|
 | `get_api_info` | Zabbix API versiyon bilgisi | system |

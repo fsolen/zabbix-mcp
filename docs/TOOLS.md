@@ -93,10 +93,10 @@ Host listesi sorgulama.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `group_name` | string | ❌ | Host grup adı ile filtrele |
-| `host_pattern` | string | ❌ | Host adı pattern (wildcard) |
-| `status` | string | ❌ | `enabled`, `disabled`, `all` |
-| `limit` | integer | ❌ | Max sonuç sayısı (default: 100) |
+| `group_name` | string | No | Host grup adı ile filtrele |
+| `host_pattern` | string | No | Host adı pattern (wildcard) |
+| `status` | string | No | `enabled`, `disabled`, `all` |
+| `limit` | integer | No | Max sonuç sayısı (default: 100) |
 
 **Örnek Kullanım:**
 ```json
@@ -132,8 +132,8 @@ Tek bir host'un detaylı bilgisi.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_id` | string | ⚠️ | Host ID |
-| `host_name` | string | ⚠️ | Host adı (host_id yoksa) |
+| `host_id` | string | Optional | Host ID |
+| `host_name` | string | Optional | Host adı (host_id yoksa) |
 
 **Örnek Kullanım:**
 ```json
@@ -154,7 +154,7 @@ Host'un interface bilgileri (IP, port, type).
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_id` | string | ✅ | Host ID |
+| `host_id` | string | Required | Host ID |
 
 **Örnek Yanıt:**
 ```json
@@ -173,27 +173,27 @@ Host'un interface bilgileri (IP, port, type).
 
 ---
 
-### host_enable ⚠️ WRITE
+### host_enable (WRITE)
 
 Host'u etkinleştirir.
 
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_id` | string | ✅ | Host ID |
+| `host_id` | string | Required | Host ID |
 
 **Tag:** `host`, `write`
 
 ---
 
-### host_disable ⚠️ WRITE
+### host_disable (WRITE)
 
 Host'u devre dışı bırakır.
 
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_id` | string | ✅ | Host ID |
+| `host_id` | string | Required | Host ID |
 
 **Tag:** `host`, `write`
 
@@ -206,7 +206,7 @@ Host grupları listesi.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `filter_name` | string | ❌ | Grup adı ile filtrele |
+| `filter_name` | string | No | Grup adı ile filtrele |
 
 **Örnek Yanıt:**
 ```json
@@ -235,11 +235,11 @@ Trigger listesi sorgulama.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_ids` | array | ❌ | Host ID listesi |
-| `group_ids` | array | ❌ | Grup ID listesi |
-| `only_problems` | boolean | ❌ | Sadece problem durumunda olanlar |
-| `min_severity` | integer | ❌ | Min severity (0-5) |
-| `limit` | integer | ❌ | Max sonuç (default: 100) |
+| `host_ids` | array | No | Host ID listesi |
+| `group_ids` | array | No | Grup ID listesi |
+| `only_problems` | boolean | No | Sadece problem durumunda olanlar |
+| `min_severity` | integer | No | Min severity (0-5) |
+| `limit` | integer | No | Max sonuç (default: 100) |
 
 **Severity Değerleri:**
 | Değer | Anlam |
@@ -260,7 +260,7 @@ Tek trigger detayı.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `trigger_id` | string | ✅ | Trigger ID |
+| `trigger_id` | string | Required | Trigger ID |
 
 ---
 
@@ -271,12 +271,12 @@ Aktif problemler listesi.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_ids` | array | ❌ | Host ID listesi |
-| `group_ids` | array | ❌ | Grup ID listesi |
-| `severity_min` | integer | ❌ | Min severity (0-5) |
-| `acknowledged` | boolean | ❌ | Sadece acknowledged olanlar |
-| `suppressed` | boolean | ❌ | Suppressed durumu |
-| `limit` | integer | ❌ | Max sonuç (default: 100) |
+| `host_ids` | array | No | Host ID listesi |
+| `group_ids` | array | No | Grup ID listesi |
+| `severity_min` | integer | No | Min severity (0-5) |
+| `acknowledged` | boolean | No | Sadece acknowledged olanlar |
+| `suppressed` | boolean | No | Suppressed durumu |
+| `limit` | integer | No | Max sonuç (default: 100) |
 
 **Örnek Kullanım:**
 ```json
@@ -316,25 +316,25 @@ Event geçmişi sorgulama.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_ids` | array | ❌ | Host ID listesi |
-| `trigger_ids` | array | ❌ | Trigger ID listesi |
-| `time_from` | integer | ❌ | Başlangıç timestamp |
-| `time_till` | integer | ❌ | Bitiş timestamp |
-| `value` | integer | ❌ | 0=OK, 1=Problem |
-| `limit` | integer | ❌ | Max sonuç |
+| `host_ids` | array | No | Host ID listesi |
+| `trigger_ids` | array | No | Trigger ID listesi |
+| `time_from` | integer | No | Başlangıç timestamp |
+| `time_till` | integer | No | Bitiş timestamp |
+| `value` | integer | No | 0=OK, 1=Problem |
+| `limit` | integer | No | Max sonuç |
 
 ---
 
-### acknowledge_event ⚠️ WRITE
+### acknowledge_event (WRITE)
 
 Problem acknowledge etme.
 
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `event_ids` | array | ✅ | Event ID listesi |
-| `message` | string | ❌ | Acknowledge mesajı |
-| `action` | integer | ❌ | Acknowledge action (bkz. tablo) |
+| `event_ids` | array | Required | Event ID listesi |
+| `message` | string | No | Acknowledge mesajı |
+| `action` | integer | No | Acknowledge action (bkz. tablo) |
 
 **Action Değerleri:**
 | Değer | Anlam |
@@ -358,11 +358,11 @@ Item listesi sorgulama.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_ids` | array | ❌ | Host ID listesi |
-| `group_ids` | array | ❌ | Grup ID listesi |
-| `item_key` | string | ❌ | Item key pattern |
-| `search_name` | string | ❌ | Item adında arama |
-| `limit` | integer | ❌ | Max sonuç |
+| `host_ids` | array | No | Host ID listesi |
+| `group_ids` | array | No | Grup ID listesi |
+| `item_key` | string | No | Item key pattern |
+| `search_name` | string | No | Item adında arama |
+| `limit` | integer | No | Max sonuç |
 
 **Örnek Kullanım:**
 ```json
@@ -385,7 +385,7 @@ Tek item detayı.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `item_id` | string | ✅ | Item ID |
+| `item_id` | string | Required | Item ID |
 
 ---
 
@@ -396,11 +396,11 @@ Item history verileri.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `item_ids` | array | ✅ | Item ID listesi |
-| `history_type` | integer | ❌ | 0=float, 1=str, 2=log, 3=int, 4=text |
-| `time_from` | integer | ❌ | Başlangıç timestamp |
-| `time_till` | integer | ❌ | Bitiş timestamp |
-| `limit` | integer | ❌ | Max sonuç (default: 100) |
+| `item_ids` | array | Required | Item ID listesi |
+| `history_type` | integer | No | 0=float, 1=str, 2=log, 3=int, 4=text |
+| `time_from` | integer | No | Başlangıç timestamp |
+| `time_till` | integer | No | Bitiş timestamp |
+| `limit` | integer | No | Max sonuç (default: 100) |
 
 **Örnek Kullanım:**
 ```json
@@ -435,10 +435,10 @@ Trend verileri (hourly/daily aggregated).
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `item_ids` | array | ✅ | Item ID listesi |
-| `time_from` | integer | ❌ | Başlangıç timestamp |
-| `time_till` | integer | ❌ | Bitiş timestamp |
-| `limit` | integer | ❌ | Max sonuç |
+| `item_ids` | array | Required | Item ID listesi |
+| `time_from` | integer | No | Başlangıç timestamp |
+| `time_till` | integer | No | Bitiş timestamp |
+| `limit` | integer | No | Max sonuç |
 
 **Örnek Yanıt:**
 ```json
@@ -465,25 +465,25 @@ Maintenance listesi.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `active_only` | boolean | ❌ | Sadece aktif olanlar |
-| `host_ids` | array | ❌ | Bu host'ları etkileyen |
+| `active_only` | boolean | No | Sadece aktif olanlar |
+| `host_ids` | array | No | Bu host'ları etkileyen |
 
 ---
 
-### create_maintenance ⚠️ WRITE
+### create_maintenance (WRITE)
 
 Yeni maintenance oluşturur.
 
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `name` | string | ✅ | Maintenance adı |
-| `host_ids` | array | ⚠️ | Host ID listesi |
-| `group_ids` | array | ⚠️ | Grup ID listesi |
-| `active_since` | integer | ✅ | Başlangıç timestamp |
-| `active_till` | integer | ✅ | Bitiş timestamp |
-| `description` | string | ❌ | Açıklama |
-| `maintenance_type` | integer | ❌ | 0=data collection, 1=no data |
+| `name` | string | Required | Maintenance adı |
+| `host_ids` | array | Optional | Host ID listesi |
+| `group_ids` | array | Optional | Grup ID listesi |
+| `active_since` | integer | Required | Başlangıç timestamp |
+| `active_till` | integer | Required | Bitiş timestamp |
+| `description` | string | No | Açıklama |
+| `maintenance_type` | integer | No | 0=data collection, 1=no data |
 
 **Örnek Kullanım:**
 ```json
@@ -503,14 +503,14 @@ Yeni maintenance oluşturur.
 
 ---
 
-### delete_maintenance ⚠️ WRITE
+### delete_maintenance (WRITE)
 
 Maintenance siler.
 
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `maintenance_ids` | array | ✅ | Maintenance ID listesi |
+| `maintenance_ids` | array | Required | Maintenance ID listesi |
 
 **Tag:** `maintenance`, `write`
 
@@ -525,23 +525,23 @@ Script listesi.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `host_id` | string | ❌ | Bu host için kullanılabilir scriptler |
+| `host_id` | string | No | Bu host için kullanılabilir scriptler |
 
 ---
 
-### execute_script ⚠️ WRITE
+### execute_script (WRITE)
 
 Host üzerinde script çalıştırır.
 
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `script_id` | string | ✅ | Script ID |
-| `host_id` | string | ✅ | Hedef host ID |
+| `script_id` | string | Required | Script ID |
+| `host_id` | string | Required | Hedef host ID |
 
 **Tag:** `script`, `write`
 
-⚠️ **Dikkat:** Bu tool gerçek komut çalıştırır. Sadece güvenilir scriptler için kullanın.
+Optional **Dikkat:** Bu tool gerçek komut çalıştırır. Sadece güvenilir scriptler için kullanın.
 
 ---
 
@@ -554,8 +554,8 @@ Template listesi.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `filter_name` | string | ❌ | Template adı ile filtrele |
-| `host_ids` | array | ❌ | Bu host'lara bağlı templateler |
+| `filter_name` | string | No | Template adı ile filtrele |
+| `host_ids` | array | No | Bu host'lara bağlı templateler |
 
 ---
 
@@ -568,7 +568,7 @@ Kullanıcı listesi.
 **Parametreler:**
 | Parametre | Tip | Zorunlu | Açıklama |
 |-----------|-----|---------|----------|
-| `usergroup_ids` | array | ❌ | Belirli grupların üyeleri |
+| `usergroup_ids` | array | No | Belirli grupların üyeleri |
 
 ---
 
