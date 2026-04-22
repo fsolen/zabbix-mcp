@@ -3,6 +3,12 @@ MCP SSE Transport - OpenShift Compatible
 
 Bu modül MCP protokolünü SSE üzerinden serve eder.
 Claude Desktop veya diğer MCP client'lar bu endpoint'e bağlanabilir.
+
+Multi-Server Support:
+- Her tool'a opsiyonel 'server' parametresi eklenmiştir
+- server belirtilmezse default_server kullanılır
+- 'all' değeri tüm server'larda sorgu yapar
+- Global tool'lar (global_*) tüm server'larda sorgu yapar
 """
 
 import json
@@ -14,54 +20,105 @@ from fastapi.responses import StreamingResponse, JSONResponse
 import httpx
 import structlog
 
-from .config_loader import load_config
+from .config_loader import load_config, get_server_names
 from .cache import RedisCache
 from .zabbix_client import ZabbixClient
+from .zabbix_manager import ZabbixClientManager, get_zabbix_manager, close_zabbix_manager
 from .rate_limiter import DistributedRateLimiter
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/mcp", tags=["MCP"])
 
-# Global zabbix client (lazy init)
-_zabbix_client = None
-_client_lock = asyncio.Lock()
+# Global zabbix manager (lazy init)
+_zabbix_manager = None
+_manager_lock = asyncio.Lock()
 
-async def get_zabbix_client():
-    """Get or create Zabbix client with lazy initialization"""
-    global _zabbix_client
-    async with _client_lock:
-        if _zabbix_client is None:
+async def get_manager():
+    """Get or create Zabbix manager with lazy initialization"""
+    global _zabbix_manager
+    async with _manager_lock:
+        if _zabbix_manager is None:
             cfg = load_config()
             rate_limiter = DistributedRateLimiter(
                 redis_url=cfg["redis"]["url"],
                 calls_per_second=cfg.get("rate_limit", {}).get("calls_per_second", 5)
             )
-            _zabbix_client = ZabbixClient(cfg["zabbix"], rate_limiter)
-            await _zabbix_client.login()
-            logger.info("zabbix_client_initialized")
-    return _zabbix_client
+            _zabbix_manager = ZabbixClientManager(rate_limiter)
+            await _zabbix_manager.initialize()
+            logger.info("zabbix_manager_initialized", 
+                       servers=_zabbix_manager.get_server_names())
+    return _zabbix_manager
+
+
+# Server parameter - added to all tools
+SERVER_PARAM = {
+    "server": {
+        "type": "string",
+        "description": "Hedef Zabbix server adı. Boş bırakılırsa default server kullanılır. 'all' değeri tüm serverlarda sorgular."
+    }
+}
 
 
 # Tool tanımları - Query Tools (Read-Only)
 TOOLS = [
+    # === MULTI-SERVER TOOLS ===
+    {
+        "name": "list_servers",
+        "description": "Bağlı Zabbix server'ların listesini döndürür.",
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "tags": ["system", "global"]
+    },
+    {
+        "name": "global_stats",
+        "description": "TÜM Zabbix server'lardan toplam istatistikleri getirir: host, item, trigger sayıları.",
+        "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "tags": ["system", "global"]
+    },
+    {
+        "name": "global_problems",
+        "description": "TÜM Zabbix server'lardaki aktif problemleri getirir.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "min_severity": {"type": "integer", "description": "Minimum severity (0-5)"},
+                "limit_per_server": {"type": "integer", "default": 100}
+            },
+            "required": []
+        },
+        "tags": ["problem", "global"]
+    },
+    {
+        "name": "global_host_search",
+        "description": "TÜM Zabbix server'larda host arar.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "pattern": {"type": "string", "description": "Host adı pattern"},
+                "limit_per_server": {"type": "integer", "default": 50}
+            },
+            "required": ["pattern"]
+        },
+        "tags": ["host", "global"]
+    },
+    
     # === SYSTEM STATUS ===
     {
         "name": "get_zabbix_status",
         "description": "Zabbix MCP sisteminin genel durumunu gösterir.",
-        "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "inputSchema": {"type": "object", "properties": {**SERVER_PARAM}, "required": []},
         "tags": ["system"]
     },
     {
         "name": "api_version",
         "description": "Zabbix API versiyonunu döndürür.",
-        "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "inputSchema": {"type": "object", "properties": {**SERVER_PARAM}, "required": []},
         "tags": ["system"]
     },
     {
         "name": "get_summary",
-        "description": "Tüm Zabbix altyapısının özet istatistiklerini getirir: toplam host, item, trigger sayıları ve genel sağlık durumu.",
-        "inputSchema": {"type": "object", "properties": {}, "required": []},
+        "description": "Zabbix altyapısının özet istatistiklerini getirir.",
+        "inputSchema": {"type": "object", "properties": {**SERVER_PARAM}, "required": []},
         "tags": ["system"]
     },
     
@@ -72,6 +129,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "groupids": {"type": "array", "items": {"type": "string"}, "description": "Grup ID listesi"},
                 "templateids": {"type": "array", "items": {"type": "string"}, "description": "Template ID listesi"},
                 "search": {"type": "string", "description": "Host adında aranacak metin"},
@@ -87,6 +145,7 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
+                **SERVER_PARAM,
                 "name": {"type": "string", "description": "Host adı"},
                 "groupids": {"type": "array", "items": {"type": "string"}, "description": "Grup ID listesi"},
                 "templateids": {"type": "array", "items": {"type": "string"}, "description": "Template ID listesi"},
@@ -488,11 +547,128 @@ def is_write_operation(tool_name: str) -> bool:
 async def execute_tool(name: str, arguments: dict, cache: RedisCache) -> str:
     """Execute a tool and return result"""
     
+    # Extract server parameter (used by most tools)
+    server = arguments.pop("server", None)  # Remove from arguments to avoid passing to Zabbix
+    
+    # ==================== GLOBAL MULTI-SERVER TOOLS ====================
+    
+    if name == "list_servers":
+        try:
+            manager = await get_manager()
+            servers = manager.get_server_names()
+            cfg = load_config()
+            default = cfg.get("default_server", servers[0] if servers else "N/A")
+            
+            result = f"🌐 **Bağlı Zabbix Sunucuları ({len(servers)}):**\n\n"
+            for s in servers:
+                marker = " ⭐ (default)" if s == default else ""
+                result += f"• **{s}**{marker}\n"
+            return result
+        except Exception as e:
+            return f"❌ Hata: {str(e)}"
+    
+    elif name == "global_stats":
+        try:
+            manager = await get_manager()
+            stats = await manager.get_global_stats()
+            
+            result = f"🌐 **Tüm Zabbix Sunucuları - Global İstatistikler**\n\n"
+            
+            # Per-server stats
+            for server_name, server_stats in stats["servers"].items():
+                if server_stats.get("status") == "error":
+                    result += f"❌ **{server_name}**: {server_stats.get('error')}\n\n"
+                else:
+                    result += f"📊 **{server_name}**\n"
+                    result += f"   - Hosts: {server_stats.get('total_hosts', 0):,}\n"
+                    result += f"   - Items: {server_stats.get('total_items', 0):,}\n"
+                    result += f"   - Triggers: {server_stats.get('total_triggers', 0):,}\n"
+                    result += f"   - Problems: {server_stats.get('problem_triggers', 0):,}\n\n"
+            
+            # Totals
+            totals = stats["totals"]
+            result += f"**📈 TOPLAM:**\n"
+            result += f"- Toplam Host: {totals['total_hosts']:,}\n"
+            result += f"- Toplam Item: {totals['total_items']:,}\n"
+            result += f"- Toplam Trigger: {totals['total_triggers']:,}\n"
+            result += f"- Aktif Problem: {totals['problem_triggers']:,}\n"
+            
+            return result
+        except Exception as e:
+            return f"❌ Hata: {str(e)}"
+    
+    elif name == "global_problems":
+        try:
+            manager = await get_manager()
+            min_sev = arguments.get("min_severity", 0)
+            limit = arguments.get("limit_per_server", 100)
+            
+            problems = await manager.get_all_problems(min_severity=min_sev, limit_per_server=limit)
+            
+            if not problems:
+                return "✅ Tüm sunucularda aktif problem yok!"
+            
+            severity_names = ["Not classified", "Information", "Warning", "Average", "High", "Disaster"]
+            result = f"🚨 **Tüm Sunucularda {len(problems)} Aktif Problem:**\n\n"
+            
+            for p in problems[:50]:  # Limit display
+                sev = int(p.get("severity", 0))
+                sev_name = severity_names[sev] if sev < 6 else "Unknown"
+                server = p.get("_server", "?")
+                host = p.get("hosts", [{}])[0].get("name", "?") if p.get("hosts") else "?"
+                ack = "✅" if p.get("acknowledged") == "1" else "❌"
+                
+                result += f"🔴 [{server}] **{p.get('name', 'N/A')}**\n"
+                result += f"   Host: {host}, Severity: {sev_name}, Ack: {ack}\n"
+            
+            if len(problems) > 50:
+                result += f"\n... ve {len(problems) - 50} problem daha"
+            
+            return result
+        except Exception as e:
+            return f"❌ Hata: {str(e)}"
+    
+    elif name == "global_host_search":
+        try:
+            manager = await get_manager()
+            pattern = arguments.get("pattern", "")
+            limit = arguments.get("limit_per_server", 50)
+            
+            if not pattern:
+                return "❌ 'pattern' parametresi gerekli."
+            
+            hosts = await manager.search_hosts_global(pattern=pattern, limit_per_server=limit)
+            
+            if not hosts:
+                return f"'{pattern}' ile eşleşen host bulunamadı."
+            
+            result = f"🔍 **'{pattern}' için {len(hosts)} Host Bulundu:**\n\n"
+            for h in hosts[:50]:
+                server = h.get("_server", "?")
+                status = "✅" if h.get("status") == "0" else "⛔"
+                result += f"{status} [{server}] **{h.get('name', h.get('host', '?'))}** (ID: {h.get('hostid', '?')})\n"
+            
+            if len(hosts) > 50:
+                result += f"\n... ve {len(hosts) - 50} host daha"
+            
+            return result
+        except Exception as e:
+            return f"❌ Hata: {str(e)}"
+    
+    # ==================== CACHE-BASED TOOLS ====================
+    
     if name == "get_zabbix_status":
         health = cache.health_check()
+        try:
+            manager = await get_manager()
+            servers = manager.get_server_names()
+        except:
+            servers = []
+        
         return json.dumps({
             "status": "healthy" if health["redis_connected"] else "degraded",
             "cache": health,
+            "servers": servers,
             "version": "1.0.0"
         }, indent=2)
     
@@ -683,6 +859,7 @@ async def execute_tool(name: str, arguments: dict, cache: RedisCache) -> str:
     
     # ==================== DIRECT ZABBIX API CALLS ====================
     # These tools query Zabbix directly (not from cache)
+    # Support multi-server via 'server' parameter
     
     cfg = load_config()
     read_only = cfg.get("mode", {}).get("read_only", True)
@@ -692,12 +869,14 @@ async def execute_tool(name: str, arguments: dict, cache: RedisCache) -> str:
         return f"❌ Hata: '{name}' yazma işlemi gerektirir ancak sistem read-only modda."
     
     try:
-        client = await get_zabbix_client()
+        manager = await get_manager()
+        client = manager.get_client(server)  # server=None uses default
+        server_name = server or manager.default_server
         
         # === API INFO ===
         if name == "api_version":
             version = await client.api_version()
-            return f"Zabbix API Versiyonu: {version}"
+            return f"[{server_name}] Zabbix API Versiyonu: {version}"
         
         # === HOST ===
         elif name == "host_get":
@@ -708,9 +887,9 @@ async def execute_tool(name: str, arguments: dict, cache: RedisCache) -> str:
                 limit=arguments.get("limit", 100)
             )
             if not hosts:
-                return "Hiç host bulunamadı."
+                return f"[{server_name}] Hiç host bulunamadı."
             
-            result = f"📋 **{len(hosts)} Host:**\n\n"
+            result = f"📋 [{server_name}] **{len(hosts)} Host:**\n\n"
             for h in hosts[:50]:  # Limit display
                 status = "✅" if h.get("status") == "0" else "⛔"
                 groups = ", ".join([g["name"] for g in h.get("groups", [])])

@@ -14,12 +14,33 @@ mode:
 # -----------------------------------------------------------------------------
 # Zabbix API Bağlantısı
 # -----------------------------------------------------------------------------
-zabbix:
-  url: "https://zabbix.example.com/api_jsonrpc.php"
-  timeout: 60                  # API timeout (saniye)
-  max_retries: 3               # Retry sayısı
-  verify_ssl: true             # SSL sertifika doğrulama
-  skip_version_check: false    # API version kontrolünü atla
+# Multi-Server Konfigürasyonu
+# Her site için ayrı server tanımı yapılır.
+# Environment variables: ZABBIX_{SERVER}_USER, ZABBIX_{SERVER}_PASS
+# Örnek: ZABBIX_TMLL_USER, ZABBIX_TMLL_PASS
+# Legacy format (zabbix:) da desteklenir.
+
+servers:
+  tmll:
+    url: "https://zabbix-tmll.example.com/api_jsonrpc.php"
+    timeout: 60
+    max_retries: 3
+    verify_ssl: true
+  
+  tzla:
+    url: "https://zabbix-tzla.example.com/api_jsonrpc.php"
+    timeout: 60
+    max_retries: 3
+    verify_ssl: true
+  
+  gcp:
+    url: "https://zabbix-gcp.example.com/api_jsonrpc.php"
+    timeout: 60
+    max_retries: 3
+    verify_ssl: true
+
+# Default server (server parametresi belirtilmezse kullanılır)
+default_server: tmll
 
 # -----------------------------------------------------------------------------
 # Redis Bağlantısı

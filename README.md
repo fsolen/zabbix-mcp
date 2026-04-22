@@ -2,23 +2,101 @@
 
 Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucusu. AI asistanlarının (Claude, GPT, vb.) Zabbix verilerine güvenli ve kontrollü erişimini sağlar.
 
-**Desteklenen ölçek:** 2500+ host, 500k+ item, 100k+ trigger
+**Desteklenen ölçek:** 2500+ host, 500k+ item, 100k+ trigger **per server**
 
-## Temel Özellikler
+## 🎯 Temel Özellikler
 
 | Özellik | Açıklama |
 |---------|----------|
+| **Multi-Server Support** | Birden fazla Zabbix cluster'ı tek MCP üzerinden yönet |
 | **MCP Protokolü** | Claude Desktop ve diğer AI asistanlarla native entegrasyon |
 | **35+ Zabbix Tool** | Host, trigger, problem, maintenance, script ve daha fazlası |
+| **Global Queries** | Tüm server'larda aynı anda sorgulama |
 | **Distributed Cache** | Redis tabanlı, multi-pod paylaşımlı cache |
-| **Rate Limiting** | Zabbix API'yi korumak için akıllı istek sınırlama |
+| **Rate Limiting** | Her server için ayrı rate limiting |
 | **Read-Only Mode** | Production ortamda güvenli salt-okunur mod |
 | **Tag-Based Filtering** | Tool'ları kategorilere göre etkinleştir/devre dışı bırak |
 | **OpenShift Ready** | UBI9 image, restricted SCC uyumlu |
 
 ---
 
-## Çalışma Mantığı
+## 🌐 Multi-Server Mimarisi
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ZABBIX MCP (Multi-Server)                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   ┌──────────────┐                                                          │
+│   │   Route      │◄──── HTTPS (edge TLS)                                   │
+│   │ zabbix-mcp   │                                                          │
+│   └──────┬───────┘                                                          │
+│          │                                                                  │
+│          ▼                                                                  │
+│   ┌──────────────────────────────────────────────────────────────────┐      │
+│   │                      MCP API (FastAPI)                            │      │
+│   │                                                                   │      │
+│   │  • list_servers     → Bağlı server listesi                       │      │
+│   │  • global_stats     → Tüm serverlardan istatistik                │      │
+│   │  • global_problems  → Tüm serverlardaki problemler               │      │
+│   │  • host_get(server=tmll) → Belirli server'a sorgu                │      │
+│   │                                                                   │      │
+│   └──────────────────────────────────────────────────────────────────┘      │
+│                    │              │              │                          │
+│                    ▼              ▼              ▼                          │
+│   ┌────────────────────────────────────────────────────────────────┐        │
+│   │                   ZabbixClientManager                           │        │
+│   │                                                                 │        │
+│   │   ┌─────────┐     ┌─────────┐     ┌─────────┐                 │        │
+│   │   │  TMLL   │     │  TZLA   │     │   GCP   │                 │        │
+│   │   │ Client  │     │ Client  │     │ Client  │                 │        │
+│   │   └────┬────┘     └────┬────┘     └────┬────┘                 │        │
+│   │        │               │               │                       │        │
+│   └────────│───────────────│───────────────│───────────────────────┘        │
+│            │               │               │                                 │
+└────────────│───────────────│───────────────│─────────────────────────────────┘
+             │               │               │
+             ▼               ▼               ▼
+     ┌───────────────┐ ┌───────────────┐ ┌───────────────┐
+     │ Zabbix TMLL   │ │ Zabbix TZLA   │ │ Zabbix GCP    │
+     │ (2500 hosts)  │ │ (1500 hosts)  │ │ (800 hosts)   │
+     └───────────────┘ └───────────────┘ └───────────────┘
+```
+
+### Örnek Kullanım
+
+```
+👤 User: "Tüm sitelerdeki aktif problemleri göster"
+
+🤖 Claude: [global_problems tool'unu çağırır]
+   
+   🚨 Tüm Sunucularda 15 Aktif Problem:
+   
+   🔴 [tmll] Host web-01 - High CPU usage
+      Severity: High, Ack: ❌
+   
+   🔴 [tzla] Host db-master - Disk space low
+      Severity: Average, Ack: ✅
+   
+   🔴 [gcp] Host k8s-node-03 - Memory pressure
+      Severity: High, Ack: ❌
+```
+
+```
+👤 User: "TMLL'deki Linux sunucuları listele"
+
+🤖 Claude: [host_get tool'unu server="tmll" ile çağırır]
+   
+   📋 [tmll] 150 Host:
+   
+   ✅ linux-web-01 (ID: 10084)
+   ✅ linux-db-01 (ID: 10085)
+   ...
+```
+
+---
+
+## 🔄 Çalışma Mantığı
 
 ### Sorgu Akış Diyagramı
 

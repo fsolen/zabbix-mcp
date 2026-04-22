@@ -11,12 +11,30 @@ data:
     mode:
       read_only: true
 
-    zabbix:
-      url: "https://zabbix.example.com/api_jsonrpc.php"
-      timeout: 60
-      max_retries: 3
-      verify_ssl: true
-      skip_version_check: false
+    # Multi-Server Zabbix Configuration
+    # Her site için ayrı server tanımı
+    # Credentials: ZABBIX_{SERVER}_USER, ZABBIX_{SERVER}_PASS (Secret'tan)
+    servers:
+      tmll:
+        url: "https://zabbix-tmll.sahibindenlocal.net/api_jsonrpc.php"
+        timeout: 60
+        max_retries: 3
+        verify_ssl: true
+      
+      tzla:
+        url: "https://zabbix-tzla.sahibindenlocal.net/api_jsonrpc.php"
+        timeout: 60
+        max_retries: 3
+        verify_ssl: true
+      
+      gcp:
+        url: "https://zabbix-gcp.sahibinden.com/api_jsonrpc.php"
+        timeout: 60
+        max_retries: 3
+        verify_ssl: true
+
+    # Default server (server parametresi belirtilmezse)
+    default_server: tmll
 
     redis:
       url: "redis://redis-master:6379/0"
