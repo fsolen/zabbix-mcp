@@ -4,7 +4,7 @@ Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucu
 
 **Desteklenen ölçek:** 2500+ host, 500k+ item, 100k+ trigger
 
-## 🎯 Temel Özellikler
+## Temel Özellikler
 
 | Özellik | Açıklama |
 |---------|----------|
@@ -18,13 +18,13 @@ Enterprise-grade Zabbix monitoring aracı ve MCP (Model Context Protocol) sunucu
 
 ---
 
-## 🔄 Çalışma Mantığı
+## Çalışma Mantığı
 
 ### Sorgu Akış Diyagramı
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                              SORGU AKIŞI                                      │
+│                              SORGU AKIŞI                                     │
 └──────────────────────────────────────────────────────────────────────────────┘
 
   ┌─────────┐      ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
@@ -126,35 +126,35 @@ return {"content": [{"type": "text", "text": json.dumps(result)}]}
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                            OPENSHIFT CLUSTER                                 │
+│                            OPENSHIFT CLUSTER                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
+│                                                                             │
 │   ┌──────────────┐                                                          │
 │   │   Route      │◄──── HTTPS (edge TLS)                                    │
 │   │ zabbix-mcp   │                                                          │
 │   └──────┬───────┘                                                          │
-│          │                                                                   │
-│          ▼                                                                   │
-│   ┌──────────────┐      ┌──────────────┐      ┌──────────────┐             │
-│   │   API Pod    │      │   API Pod    │      │  Worker Pod  │             │
-│   │  (FastAPI)   │      │  (FastAPI)   │      │  (Scanner)   │             │
-│   │              │      │              │      │              │             │
-│   │ • /mcp/sse   │      │ • /mcp/sse   │      │ • Group scan │             │
-│   │ • /tools     │      │ • /tools     │      │ • Stats calc │             │
-│   │ • /health    │      │ • /health    │      │ • COUNT query│             │
-│   └──────┬───────┘      └──────┬───────┘      └──────┬───────┘             │
+│          │                                                                  │
+│          ▼                                                                  │
+│   ┌──────────────┐      ┌──────────────┐      ┌──────────────┐              │
+│   │   API Pod    │      │   API Pod    │      │  Worker Pod  │              │
+│   │  (FastAPI)   │      │  (FastAPI)   │      │  (Scanner)   │              │
+│   │              │      │              │      │              │              │
+│   │ • /mcp/sse   │      │ • /mcp/sse   │      │ • Group scan │              │
+│   │ • /tools     │      │ • /tools     │      │ • Stats calc │              │
+│   │ • /health    │      │ • /health    │      │ • COUNT query│              │
+│   └──────┬───────┘      └──────┬───────┘      └──────┬───────┘              │
 │          │                     │                     │                      │
 │          └─────────────────────┴─────────────────────┘                      │
 │                                │                                            │
 │                                ▼                                            │
-│                    ┌───────────────────────┐                               │
-│                    │     Redis Master      │                               │
-│                    │    (Cache + Rate)     │                               │
-│                    │                       │                               │
-│                    │ • Distributed cache   │                               │
-│                    │ • Rate limit counters │                               │
-│                    │ • Global stats store  │                               │
-│                    └───────────────────────┘                               │
+│                    ┌───────────────────────┐                                │
+│                    │     Redis Master      │                                │
+│                    │    (Cache + Rate)     │                                │
+│                    │                       │                                │
+│                    │ • Distributed cache   │                                │
+│                    │ • Rate limit counters │                                │
+│                    │ • Global stats store  │                                │
+│                    └───────────────────────┘                                │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
                                  │
@@ -464,10 +464,3 @@ mode:
   read_only: false  # write tool'ları için
 disabled_tags: []   # boş olmalı
 ```
-
----
-
-## 📄 Lisans
-
-MIT License
-
